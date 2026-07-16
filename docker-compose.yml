@@ -22,6 +22,7 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       API_PORT: "3000"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/grammashop"
     ports:
       - "3000:3000"
     depends_on:

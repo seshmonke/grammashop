@@ -21,4 +21,4 @@ WORKDIR /repo
 COPY --from=build /repo ./
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["sh", "-c", "node apps/api/dist/db/migrate.js && node apps/api/dist/index.js"]

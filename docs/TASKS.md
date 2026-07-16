@@ -88,6 +88,28 @@
 
 Веха 2 дорожной карты закрыта — все задачи Спринта 2 выполнены.
 
+### Спринт 3 (27.07–02.08): база данных — Drizzle + Postgres (веха 3 дорожной карты)
+
+Задачи идут в порядке зависимости.
+
+- [x] ~~Drizzle ORM + drizzle-kit в `apps/api`: зависимости,
+  `drizzle.config.ts`, клиент подключения к Postgres через `DATABASE_URL`
+  (уже в `.env.example`)~~ — сделано (`apps/api/src/db/client.ts`).
+- [x] ~~Базовая схема-заглушка (одна таблица-плейсхолдер)~~ — сделано
+  (`apps/api/src/db/schema.ts`, таблица `health_check`); настоящая
+  доменная схема — веха 4 вместе со скелетом Fastify по TDD.
+- [x] ~~Первая миграция (`drizzle-kit generate` + применение)~~ — сделано,
+  `apps/api/drizzle/0000_majestic_captain_britain.sql`, прогнана руками
+  и на `grammashop`, и на `grammashop_test`.
+- [x] ~~Проверка миграций в докере~~ — сделано: `apps/api/src/db/migrate.ts`
+  запускается в `CMD` контейнера `api` перед стартом сервера (см.
+  `apps/api/Dockerfile`), `DATABASE_URL` прокинут в `docker-compose.yml`.
+  Проверено руками с нуля: `docker compose down -v` → `docker compose up`
+  → лог `migrations applied` → `\dt` в `grammashop` показывает
+  `health_check` → `curl localhost:3000` отдаёт hello world.
+
+Веха 3 дорожной карты закрыта — все задачи Спринта 3 выполнены.
+
 ## Дорожная карта проекта
 
 Высший масштаб планирования: инженерный трек от пустого репозитория до
@@ -109,7 +131,7 @@
   (postgres + тестовая БД/схема + api + web), multi-stage `Dockerfile`
   на каждый сервис, `docker compose up` поднимает всё локально и
   отдаёт "hello world" с api и web.
-- [ ] **3. База данных** — подключение Drizzle к Postgres, первая
+- [x] **3. База данных** — подключение Drizzle к Postgres, первая
   миграция, базовая схема (заглушка), проверка миграций в докере.
 - [ ] **4. Бэкенд** — скелет Fastify, пайплайн `routes → services → db`
   (см. `STACK.md#пайплайн-запроса`), Zod-схемы в `packages/shared`,
@@ -162,10 +184,16 @@
   api/web, `docker compose up` отдаёт "hello world" — плейсхолдер-сервер
   в `apps/api` и статическая страница в `apps/web`, настоящий
   Fastify/Vite-скелет придёт по TDD в вехах 4-5
+- Веха 3 дорожной карты (база данных): Drizzle ORM + drizzle-kit в
+  `apps/api`, клиент подключения (`src/db/client.ts`), схема-заглушка
+  `health_check`, первая миграция (`drizzle/0000_...sql`), миграция
+  встроена в старт контейнера `api` — проверено с нуля через
+  `docker compose down -v && docker compose up`
 
 ## В работе
 
-- (пусто — Спринт 2 закрыт, следующая задача: веха 3, база данных)
+- (пусто — Спринт 3 закрыт, следующая задача: веха 4, бэкенд-скелет
+  Fastify по TDD)
 
 ## Очередь
 

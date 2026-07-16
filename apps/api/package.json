@@ -8,12 +8,19 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "echo \"TODO: Vitest (веха 4)\" && exit 1",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsc && node dist/db/migrate.js"
   },
   "dependencies": {
-    "@grammashop/shared": "workspace:*"
+    "@grammashop/shared": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0"
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.20.0",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10"
   }
 }
