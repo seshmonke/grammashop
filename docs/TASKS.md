@@ -152,6 +152,48 @@
 
 Веха 4 дорожной карты закрыта — все задачи Спринта 4 выполнены.
 
+### Спринт 5 (10.08–16.08): UX/UI-скелет React + Vite (веха 5 дорожной карты)
+
+Задачи идут в порядке зависимости. Первый компонент — по TDD (см.
+`STACK.md#методология---tdd`): сначала падающий тест через
+`@testing-library/react`, потом код.
+
+- [x] ~~Vite + React + TypeScript в `apps/web`: зависимости, `vite.config.ts`,
+  реальные `dev`/`build`-скрипты вместо TODO-заглушек, `src/main.tsx`
+  монтирует React-дерево, `index.html` — Vite-шаблон вместо
+  `public/index.html`-заглушки~~ — сделано.
+- [x] ~~React Router: три группы маршрутов (витрина / продавцовская админка /
+  платформенная админка) — плейсхолдер-страница на каждую, см.
+  `STACK.md#роутинг`~~ — сделано (`src/router.tsx`, `src/routes/*`);
+  ограничение доступа по роли из сессии — отдельная задача авторизации на
+  фронте, не в скоупе этого скелета.
+- [x] ~~`shadcn/ui` подключён (Tailwind + Radix), базовая конфигурация, один
+  компонент кита используется на плейсхолдер-странице, см.
+  `STACK.md#ui-кит`~~ — сделано (Tailwind v4 через `@tailwindcss/vite`,
+  `components.json`, `Button` на витрине).
+- [x] ~~axios-клиент в `apps/web`, настроен на обращение к `apps/api`
+  (`baseURL` из env), см. `STACK.md#http-клиент`~~ — сделано
+  (`src/lib/api-client.ts`, `VITE_API_URL` в `.env.example`).
+- [x] ~~RED: падающий тест компонента через `@testing-library/react` +
+  Vitest — компонент отображает статус `/health`, полученный через
+  axios-клиент~~ — сделано (`HealthStatus.test.tsx`, упал на отсутствующем
+  `HealthStatus.tsx`).
+- [x] ~~GREEN: компонент реализован, тест зелёный~~ — сделано
+  (`src/components/HealthStatus.tsx`).
+- [x] ~~Проверка в докере с нуля: `apps/web/Dockerfile` собирает реальный
+  Vite-билд (не статический `public/index.html`), `docker compose up` —
+  `web` отдаёт React-приложение~~ — проверено руками через `docker compose
+  down -v` → `up --build` → Playwright-браузер против `localhost:5173`:
+  `/` показывает "Витрина" + shadcn-кнопку + статус `/health` = "ok" (живой
+  запрос к `apps/api` через axios, без моков), `/seller` и `/platform`
+  отдают свои плейсхолдеры. Побочная находка: у nginx не было SPA-fallback
+  (`try_files` на `index.html`) — прямые заходы на `/seller`/`/platform`
+  падали 404, пофикшено `apps/web/nginx.conf` + прописано в Dockerfile.
+  Заодно пришлось добавить `@fastify/cors` в `apps/api`
+  (`app.ts`) — без него браузер с `:5173` не мог достучаться до `:3000`.
+
+Веха 5 дорожной карты закрыта — все задачи Спринта 5 выполнены.
+
 ## Дорожная карта проекта
 
 Высший масштаб планирования: инженерный трек от пустого репозитория до
@@ -179,7 +221,7 @@
   (см. `STACK.md#пайплайн-запроса`), Zod-схемы в `packages/shared`,
   первый health-check эндпоинт — по TDD (см. `STACK.md#тестирование`):
   сначала падающий тест через `fastify.inject()`, потом код.
-- [ ] **5. UX/UI** — скелет React + Vite, `shadcn/ui` подключён,
+- [x] **5. UX/UI** — скелет React + Vite, `shadcn/ui` подключён,
   роутинг трёх групп маршрутов (см. `STACK.md#роутинг`), axios
   настроен на обращение к `apps/api`, первый компонент — тоже по TDD
   (`@testing-library/react` + Vitest).
@@ -243,10 +285,25 @@
   `apps/api/src/env.ts` для резолвинга `.env` от файла, а не от `cwd`
   (чинит и старый `db/migrate.ts`), vitest `globalSetup` сам мигрирует
   `grammashop_test` перед прогоном тестов.
+- Веха 5 дорожной карты (UX/UI): скелет Vite + React + TypeScript в
+  `apps/web` (реальные `dev`/`build`, `index.html`-шаблон вместо статики),
+  `react-router-dom` — три группы маршрутов (`src/router.tsx`,
+  `src/routes/{storefront,seller,platform}`), `shadcn/ui` на Tailwind v4
+  (`components.json`, `src/components/ui/button.tsx`), axios-клиент
+  (`src/lib/api-client.ts`, `VITE_API_URL`), первый компонент по TDD
+  (`HealthStatus` — падающий `@testing-library/react`-тест до кода,
+  зелёный после). Проверено в докере с нуля (`docker compose down -v` →
+  `up --build`) через headless-браузер (Playwright) против
+  `localhost:5173`: все три маршрута рендерятся, статус `/health`
+  подтягивается живым запросом к `apps/api`. Побочные находки: nginx без
+  `try_files`-fallback отдавал 404 на `/seller`/`/platform` (client-side
+  роутинг) — добавлен `apps/web/nginx.conf`; `apps/api` получил
+  `@fastify/cors` (`app.ts`) — без него браузер с `:5173` не мог
+  достучаться до `:3000`.
 
 ## В работе
 
-- (пусто — Спринт 4 закрыт, следующая задача: веха 5, скелет React + Vite)
+- (пусто — Спринт 5 закрыт, следующая задача: веха 6, CI/CD)
 
 ## Очередь
 
