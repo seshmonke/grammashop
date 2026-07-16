@@ -13,6 +13,7 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 COPY apps/api apps/api
 COPY packages/shared packages/shared
+RUN pnpm --filter @grammashop/shared build
 RUN pnpm --filter @grammashop/api build
 
 FROM node:22-alpine AS runtime

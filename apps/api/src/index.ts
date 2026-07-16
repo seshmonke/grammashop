@@ -1,13 +1,10 @@
-import { createServer } from "node:http";
+import "./env.js";
+import { buildApp } from "./app.js";
 
 const port = Number(process.env.API_PORT) || 3000;
+const app = buildApp();
 
-const server = createServer((_req, res) => {
-  res.writeHead(200, { "content-type": "application/json" });
-  res.end(JSON.stringify({ message: "hello world" }));
+app.listen({ port, host: "0.0.0.0" }).catch((err) => {
+  app.log.error(err);
+  process.exit(1);
 });
-
-server.listen(port, () => {
-  console.log(`api listening on :${port}`);
-});
-

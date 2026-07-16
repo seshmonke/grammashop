@@ -145,6 +145,15 @@ apps/api/        — Fastify
 packages/shared/ — Zod-схемы, общие типы
 ```
 
+`packages/shared` собирается через `tsc` (`main`/`types` смотрят на `dist/`,
+не на `src/` напрямую) — обычный `node dist/index.js` в `apps/api` не умеет
+исполнять TypeScript, поэтому пакетам, которые реально импортируют
+`@grammashop/shared` в рантайме, нужен собранный `dist`. `pnpm -r
+build`/`typecheck` собирают воркспейсы в топологическом порядке (`shared`
+раньше зависящих от него пакетов) — pnpm делает это сам, без доп. настройки.
+В Docker-сборке `apps/api` (см. `apps/api/Dockerfile`) `shared` собирается
+явным отдельным шагом перед `api`.
+
 ## Docker
 `docker-compose.yml` для локальной разработки (postgres + api + web),
 multi-stage `Dockerfile` на каждый сервис для прода.
@@ -211,6 +220,11 @@ CI (см. «Хостинг и деплой» / «CI/CD») не пускает д
 тесты красные — это единственный автоматический гейт качества на
 старте; отдельного шага линтера/type-check пока нет, добавляем при
 реальной необходимости, а не заранее.
+
+`apps/api` мигрирует `grammashop_test` автоматически перед прогоном
+(vitest `globalSetup`, см. `apps/api/src/test/global-setup.ts`) — `pnpm
+test` не полагается на то, что кто-то не забыл прогнать миграции руками
+после `docker compose down -v`.
 
 ## Логирование и мониторинг
 Встроенный логгер Fastify (`pino`) → stdout → `docker compose logs`, без
