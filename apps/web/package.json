@@ -1,0 +1,14 @@
+{
+  "name": "@grammashop/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"TODO: Vite dev server (веха 5)\" && exit 1",
+    "build": "echo \"TODO: Vite build (веха 5)\" && exit 1",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@grammashop/shared": "workspace:*"
+  }
+}
