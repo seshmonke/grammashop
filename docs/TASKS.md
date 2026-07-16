@@ -200,15 +200,21 @@
 (ghcr.io), SSH-деплой на VM сознательно вынесен из скоупа спринта — VM
 (веха 7) ещё не существует, см. [STACK.md#ci-cd](STACK.md#ci-cd).
 
-- [ ] GitHub Actions workflow: job тестов — `postgres` как service-контейнер
-  (аналог `docker-compose`), миграции, `pnpm -r test` (web + api),
-  триггер на push/PR в `main`
-- [ ] Job сборки Docker-образов `apps/api` и `apps/web` (существующие
-  multi-stage `Dockerfile`), зависит от зелёных тестов
-- [ ] Пуш собранных образов в ghcr.io (тег по SHA коммита), авторизация
-  через встроенный `GITHUB_TOKEN`
-- [ ] Проверка руками: пуш в `main` → workflow зелёный → образы видны в
-  ghcr.io пакетах репозитория
+- [x] ~~GitHub Actions workflow: job тестов — `postgres` как
+  service-контейнер (аналог `docker-compose`), миграции, `pnpm -r test`
+  (web + api), триггер на push/PR в `main`~~ — сделано
+  (`.github/workflows/ci.yml`, job `test`).
+- [x] ~~Job сборки Docker-образов `apps/api` и `apps/web` (существующие
+  multi-stage `Dockerfile`), зависит от зелёных тестов~~ — сделано (job
+  `build-and-push`, `needs: test`).
+- [x] ~~Пуш собранных образов в ghcr.io (тег по SHA коммита), авторизация
+  через встроенный `GITHUB_TOKEN`~~ — сделано.
+- [x] ~~Проверка руками: пуш в `main` → workflow зелёный → образы видны в
+  ghcr.io пакетах репозитория~~ — проверено: run
+  [29542419280](https://github.com/seshmonke/grammashop/actions/runs/29542419280)
+  зелёный (оба job'а), `ghcr.io/seshmonke/grammashop-api` и
+  `-grammashop-web` содержат теги по SHA коммита и `latest` (проверено
+  через анонимный pull-токен ghcr.io, `/v2/.../tags/list`).
 
 ## Дорожная карта проекта
 
@@ -241,9 +247,10 @@
   роутинг трёх групп маршрутов (см. `STACK.md#роутинг`), axios
   настроен на обращение к `apps/api`, первый компонент — тоже по TDD
   (`@testing-library/react` + Vitest).
-- [ ] **6. CI/CD** — GitHub Actions: прогон тестов (Vitest, красные —
-  пайплайн падает) → сборка Docker-образов → пуш в registry → SSH на
-  VM → `docker compose pull && up -d`.
+- [x] **6. CI/CD** — GitHub Actions: прогон тестов (Vitest, красные —
+  пайплайн падает) → сборка Docker-образов → пуш в ghcr.io. SSH-деплой
+  на VM отложен до вехи 7 (сервера ещё нет), см.
+  `STACK.md#ci-cd`.
 - [ ] **7. Деплой на сервер** — VM в Yandex Cloud, `docker-compose` в
   проде с Caddy как reverse proxy (автоматический TLS через
   Let's Encrypt — обязателен, ТМА открывается только по HTTPS),
@@ -316,11 +323,23 @@
   роутинг) — добавлен `apps/web/nginx.conf`; `apps/api` получил
   `@fastify/cors` (`app.ts`) — без него браузер с `:5173` не мог
   достучаться до `:3000`.
+- Веха 6 дорожной карты (CI/CD): GitHub Actions
+  (`.github/workflows/ci.yml`) — job `test` (postgres как
+  service-контейнер, `pnpm -r test` на push/PR в `main`), job
+  `build-and-push` (только на push) собирает `apps/api`/`apps/web` и
+  пушит в GitHub Container Registry (`ghcr.io/seshmonke/grammashop-api`,
+  `-web`, теги по SHA + `latest`) через встроенный `GITHUB_TOKEN`.
+  Registry — GHCR, не Yandex Container Registry (см.
+  [STACK.md#ci-cd](STACK.md#ci-cd)): не требует IAM-настройки в Yandex
+  Cloud раньше времени. SSH-деплой на VM сознательно не написан — веха 7
+  (сервер) ещё не существует. Проверено на реальном
+  [прогоне](https://github.com/seshmonke/grammashop/actions/runs/29542419280):
+  оба job'а зелёные, образы подтверждены через анонимный pull-токен
+  ghcr.io.
 
 ## В работе
 
-- GitHub Actions workflow — job тестов (postgres service-контейнер +
-  `pnpm -r test`)
+- (пусто — Спринт 6 закрыт, следующая задача: веха 7, деплой на сервер)
 
 ## Очередь
 
