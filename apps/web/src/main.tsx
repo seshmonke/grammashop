@@ -7,10 +7,6 @@ import "./index.css";
 
 initSentry();
 
-if (new URLSearchParams(location.search).has("debugSentryTmp")) {
-  throw new Error("grammashop sentry verify web (temp)");
-}
-
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("#root element not found");

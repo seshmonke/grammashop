@@ -9,9 +9,6 @@ export function buildApp(): FastifyInstance {
     origin: `http://localhost:${process.env["WEB_PORT"] ?? "5173"}`,
   });
   app.register(healthRoutes);
-  app.get("/debug-sentry-tmp", () => {
-    throw new Error("grammashop sentry verify (temp route)");
-  });
   if (process.env["SENTRY_DSN_API"]) {
     setupFastifyErrorHandler(app);
   }
