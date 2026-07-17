@@ -270,10 +270,21 @@
 бою, ночной бэкап уходит в S3, восстановление проверяется автоматически.
 Задачи идут в порядке зависимости (бэкапы требуют готового S3).
 
-- [ ] S3-бакет (Yandex Object Storage, см.
+- [x] ~~S3-бакет (Yandex Object Storage, см.
   [STACK.md#хранилище-файлов](STACK.md#хранилище-файлов)): создать бакет
   и сервисный аккаунт с ключами, ключи в `.env` на VM, проверить
-  запись/чтение с боевого `api` через `@aws-sdk/client-s3`.
+  запись/чтение с боевого `api` через `@aws-sdk/client-s3`~~ — сделано
+  17.07.2026: бакет `grammashop-storage` (Yandex Object Storage,
+  `ru-central1`, доступ только с авторизацией, не публичный), сервисный
+  аккаунт `grammashop-s3` с ролью `storage.editor` (не шире — доступ
+  только к Object Storage этого каталога), статический ключ в `.env` на
+  VM. Код: `apps/api/src/s3/client.ts` (`S3Client` с `forcePathStyle`),
+  `apps/api/src/s3/verify.ts` (put/get/delete тестового объекта) —
+  прогнан и локально, и на бою через `docker compose exec api`, оба раза
+  `s3 verify ok`. `S3_*` переменные проброшены в контейнер `api` через
+  `docker-compose.yml` (раньше туда попадали только `DATABASE_URL`/
+  `API_PORT`, остальные переменные из `.env` не доходили до контейнера
+  вообще).
 - [ ] Sentry (free tier, см.
   [STACK.md#логирование-и-мониторинг](STACK.md#логирование-и-мониторинг)):
   подключить на `apps/api` и `apps/web`, DSN в env, проверить на бою
