@@ -18,6 +18,10 @@ RUN pnpm --filter @grammashop/api build
 
 FROM node:22-alpine AS runtime
 RUN corepack enable
+# pg_dump/psql для nightly-бэкапа и weekly restore-check (см.
+# src/db/backup.ts, src/db/restore-check.ts) — версия клиента должна
+# совпадать с postgres:16-alpine из docker-compose.yml.
+RUN apk add --no-cache postgresql16-client
 WORKDIR /repo
 COPY --from=build /repo ./
 ENV NODE_ENV=production

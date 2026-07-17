@@ -1,0 +1,9 @@
+[Unit]
+Description=grammashop: weekly restore-check последнего бэкапа
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/shmonke/grammashop
+ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T api node apps/api/dist/db/restore-check.js

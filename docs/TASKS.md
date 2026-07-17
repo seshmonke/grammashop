@@ -500,7 +500,7 @@
 
 ## В работе
 
-- (пусто)
+- Nightly `pg_dump` → S3 + weekly restore-check (Спринт 8, п.3-4)
 
 ## Очередь
 
