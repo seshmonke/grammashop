@@ -1,5 +1,8 @@
 import "./env.js";
+import { initSentry } from "./sentry.js";
 import { buildApp } from "./app.js";
+
+initSentry();
 
 const port = Number(process.env.API_PORT) || 3000;
 const app = buildApp();

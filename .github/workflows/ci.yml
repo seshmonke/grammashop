@@ -74,6 +74,7 @@ jobs:
           push: true
           build-args: |
             VITE_API_URL=/api
+            VITE_SENTRY_DSN_WEB=${{ secrets.SENTRY_DSN_WEB }}
           tags: |
             ghcr.io/${{ github.repository }}-web:${{ github.sha }}
             ghcr.io/${{ github.repository }}-web:latest

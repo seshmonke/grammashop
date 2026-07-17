@@ -17,6 +17,7 @@
     "@aws-sdk/client-s3": "^3.1088.0",
     "@fastify/cors": "^11.3.0",
     "@grammashop/shared": "workspace:*",
+    "@sentry/node": "^10.66.0",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.0",
     "pg": "^8.22.0"

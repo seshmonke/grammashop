@@ -19,6 +19,8 @@ COPY packages/shared packages/shared
 # .github/workflows/ci.yml, docker/Caddyfile — единый origin через Caddy).
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_SENTRY_DSN_WEB
+ENV VITE_SENTRY_DSN_WEB=$VITE_SENTRY_DSN_WEB
 RUN pnpm --filter @grammashop/shared build
 RUN pnpm --filter @grammashop/web build
 
