@@ -72,6 +72,25 @@ jobs:
           context: .
           file: apps/web/Dockerfile
           push: true
+          build-args: |
+            VITE_API_URL=/api
           tags: |
             ghcr.io/${{ github.repository }}-web:${{ github.sha }}
             ghcr.io/${{ github.repository }}-web:latest
+
+  deploy:
+    needs: build-and-push
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_KEY }}
+
+      - run: ssh -o StrictHostKeyChecking=accept-new ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} '
+          cd grammashop &&
+          git pull --ff-only &&
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml pull &&
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d &&
+          docker image prune -f
+          '

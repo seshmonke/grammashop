@@ -3,13 +3,11 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: grammashop
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -17,24 +15,14 @@ services:
       retries: 10
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
     environment:
       API_PORT: "3000"
-      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/grammashop"
-    ports:
-      - "3000:3000"
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/grammashop
     depends_on:
       postgres:
         condition: service_healthy
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    ports:
-      - "5173:80"
     depends_on:
       - api
 

@@ -1,0 +1,23 @@
+# Подхватывается docker compose автоматически вместе с docker-compose.yml
+# (без явного -f) — параметры, нужные только для локальной разработки:
+# сборка образов из исходников и публикация портов на хост. Прод использует
+# docker-compose.prod.yml вместо этого файла (образы из ghcr.io, без
+# публикации портов api/web/postgres — см. STACK.md#хостинг-и-деплой).
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "5173:80"

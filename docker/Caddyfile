@@ -1,0 +1,9 @@
+grammashop.online, www.grammashop.online {
+	handle_path /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}

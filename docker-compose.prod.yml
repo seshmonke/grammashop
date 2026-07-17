@@ -1,0 +1,33 @@
+# Прод-профиль: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Образы из ghcr.io (собраны в CI, см. .github/workflows/ci.yml), без
+# публикации портов api/web/postgres — единственная точка входа снаружи
+# это caddy на 80/443 (см. docker/Caddyfile, STACK.md#хостинг-и-деплой).
+services:
+  postgres:
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/seshmonke/grammashop-api:latest
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/seshmonke/grammashop-web:latest
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:
