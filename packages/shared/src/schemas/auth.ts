@@ -1,0 +1,23 @@
+import { z } from "zod";
+
+// Контракт POST /auth (см. STACK.md#авторизация): фронт отдаёт сырой
+// initData из Telegram SDK, бэк после проверки HMAC-подписи возвращает
+// короткоживущий сессионный JWT и способности аккаунта. Роль — не одно
+// значение, а два независимых флага: владелец платформы одновременно и
+// продавец (запись в sellers), и админ (env-список) — см.
+// CONCEPT.md#интерфейсы-платформы.
+
+export const authRequestSchema = z.object({
+  initData: z.string().min(1),
+});
+export type AuthRequest = z.infer<typeof authRequestSchema>;
+
+export const authResponseSchema = z.object({
+  token: z.string(),
+  telegramId: z.number(),
+  // null — у аккаунта нет активного продавца (не зарегистрирован или
+  // заблокирован админом): продавцовская админка недоступна.
+  sellerId: z.number().nullable(),
+  isAdmin: z.boolean(),
+});
+export type AuthResponse = z.infer<typeof authResponseSchema>;

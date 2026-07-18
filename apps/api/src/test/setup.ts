@@ -7,3 +7,9 @@ import "../env.js";
 if (process.env.DATABASE_URL_TEST) {
   process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
 }
+
+// В CI прогон тестов получает только DATABASE_URL_TEST (см. ci.yml) —
+// auth-обвязке нужны фиктивные значения: buildApp() падает fail-fast без
+// JWT_SECRET, а подпись initData в тестах идёт своим тестовым токеном.
+process.env.JWT_SECRET ??= "test-jwt-secret";
+process.env.TELEGRAM_BOT_TOKEN ??= "123456:TEST-fallback-token";

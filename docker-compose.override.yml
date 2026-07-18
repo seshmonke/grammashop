@@ -14,6 +14,15 @@ services:
       dockerfile: apps/api/Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      # Локальный dev перебивает NODE_ENV=production из образа (apps/api/
+      # Dockerfile) — иначе dev-байпас проверки подписи initData мёртв (см.
+      # STACK.md#авторизация). Прод-профиль (docker-compose.prod.yml) этот
+      # override не подхватывает, там остаётся production из образа.
+      NODE_ENV: ${NODE_ENV:-development}
+      # Dev-режим авторизации: /auth принимает mock-initData без подписи.
+      # Только здесь, в override — прод-профилю флаг недоступен в принципе.
+      AUTH_DEV_MODE: ${AUTH_DEV_MODE:-}
 
   web:
     build:
