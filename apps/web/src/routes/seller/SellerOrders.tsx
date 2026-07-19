@@ -9,6 +9,9 @@ import { useSellerOrders, useUpdateOrderStatus } from "../../seller/useSellerOrd
 // факт оплаты на Тарифе 1 не проверяет. Кнопки смены статуса — только
 // допустимые переходы (ORDER_STATUS_TRANSITIONS, общий источник с
 // бэком) — недопустимые не показываются вовсе, а не скрыты через disabled.
+// Переходы назад («оплачен» → «новый», «выполнен» → «оплачен») — откат
+// ошибочного клика продавца, без подтверждения (низкий риск, ничего не
+// триггерят); «отменён» — единственный необратимый переход, с confirm.
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   new: "Новый",
@@ -17,11 +20,24 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   canceled: "Отменён",
 };
 
-const TRANSITION_LABELS: Record<OrderStatus, string> = {
-  new: "Вернуть в новые",
-  paid: "Отметить оплаченным",
-  fulfilled: "Отметить выполненным",
-  canceled: "Отменить заказ",
+// Метка зависит от пары (откуда, куда) — один и тот же целевой статус
+// читается по-разному в зависимости от направления: «оплачен» как цель
+// из «новый» — это отметка оплаты, а как цель из «выполнен» — это откат
+// («снять отметку о выполнении»), см. CONCEPT.md#каталог-и-заказы.
+const TRANSITION_LABELS: Record<OrderStatus, Partial<Record<OrderStatus, string>>> = {
+  new: {
+    paid: "Отметить оплаченным",
+    canceled: "Отменить заказ",
+  },
+  paid: {
+    new: "Отменить оплату",
+    fulfilled: "Отметить выполненным",
+    canceled: "Отменить заказ",
+  },
+  fulfilled: {
+    paid: "Снять отметку о выполнении",
+  },
+  canceled: {},
 };
 
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -109,7 +125,7 @@ export function SellerOrders() {
                     disabled={updateStatus.isPending}
                     onClick={() => handleTransition(order.id, next)}
                   >
-                    {TRANSITION_LABELS[next]}
+                    {TRANSITION_LABELS[order.status][next]}
                   </Button>
                 ))}
               </div>

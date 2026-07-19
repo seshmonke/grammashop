@@ -451,7 +451,7 @@ describe("PATCH /seller/orders/:id/status", () => {
     await app.close();
   });
 
-  it("из терминального статуса (выполнен) — запрещено (400)", async () => {
+  it("выполнен → отменён: запрещено (400) — отмена невозможна после выполнения", async () => {
     const app = buildApp();
     const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
     const { variantId } = await seedProductWithVariant(ownerId);
@@ -463,6 +463,55 @@ describe("PATCH /seller/orders/:id/status", () => {
     });
 
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("отменён → куда угодно: запрещено (400) — терминальный статус без отката", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const { variantId } = await seedProductWithVariant(ownerId);
+    const orderId = await createTestOrder(ownerId, variantId, { status: "canceled" });
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "new",
+    });
+
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("оплачен → новый (отмена оплаты): разрешено", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const { variantId } = await seedProductWithVariant(ownerId);
+    const orderId = await createTestOrder(ownerId, variantId, { status: "paid" });
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "new",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("new");
+    await app.close();
+  });
+
+  it("выполнен → оплачен (снять отметку о выполнении): разрешено", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const { variantId } = await seedProductWithVariant(ownerId);
+    const orderId = await createTestOrder(ownerId, variantId, { status: "fulfilled" });
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "paid",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("paid");
     await app.close();
   });
 
