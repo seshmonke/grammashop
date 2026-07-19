@@ -10,4 +10,7 @@ const repoRoot = path.join(
   "../../..",
 );
 
-config({ path: path.join(repoRoot, ".env") });
+// quiet: true — dotenv по умолчанию печатает в stdout случайный "tip" при
+// каждой загрузке (в т.ч. рекламу сторонних доменов, не только полезные
+// подсказки) — лишний шум в логах, отключаем.
+config({ path: path.join(repoRoot, ".env"), quiet: true });
