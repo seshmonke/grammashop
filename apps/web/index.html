@@ -2,8 +2,15 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>grammashop</title>
+    <!-- Telegram WebApp SDK: создаёт window.Telegram.WebApp (initData,
+         start_param, themeParams). Обязателен внутри Telegram; вне его
+         initData пустой — фронт уходит в dev-mock (см. auth/init-data.ts). -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="root"></div>

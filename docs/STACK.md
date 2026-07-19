@@ -187,9 +187,29 @@ mock-`initData` (поля `user`/`auth_date`, но без валидной HMAC-
   в проде не бывает осознанно легитимным).
 
 Логика изолирована в `apps/api/src/auth/dev-mode.ts` (не подмешана
-опцией в security-критичный `verifyInitData`). Мок-`window.Telegram.
-WebApp` на фронте появится вместе с чтением `initData` — задача
-«Авторизация, фронт».
+опцией в security-критичный `verifyInitData`).
+
+Фронт (19.07.2026):
+
+- **`initData` — тонкая обёртка над `window.Telegram.WebApp`**
+  (`apps/web/src/lib/telegram.ts`), не тяжёлый SDK: авторизации нужны
+  только сырой `initData` и `start_param`, а прямой доступ к `window`
+  тривиально мокается. `resolveInitData()` отдаёт реальный `initData`, а
+  в браузере вне Telegram (dev) синтезирует mock — потребитель
+  `AUTH_DEV_MODE` выше. Скрипт `telegram-web-app.js` подключён в
+  `index.html`.
+- **Токен — в памяти модуля** (`auth/token-store.ts`), не в localStorage:
+  живёт 1ч и переполучается из `initData` при каждом открытии, персистить
+  незачем и небезопасно.
+- **axios-интерцепторы** (`lib/api-client.ts`): request подставляет
+  `Authorization: Bearer`, response на 401 разово пере-авторизуется
+  (свежий `initData` → новый токен) и повторяет запрос; сам `/auth` и
+  повторы исключены, чтобы не зациклиться.
+- **`AuthProvider`** бутстрапит сессию до рендера маршрутов
+  (loading/error-экраны), раздаёт её через `useSession`/`SessionContext`.
+  Это app-lifecycle, а не кэшируемое серверное состояние, поэтому
+  `useEffect`, а не TanStack Query (тот — для доменных данных).
+- **Гварды и лендинг** по способностям сессии — см. «Роутинг».
 
 ## Роутинг
 Одно SPA (`apps/web`), три группы маршрутов — витрина, продавцовская

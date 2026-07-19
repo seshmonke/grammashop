@@ -5,6 +5,7 @@ import rateLimit from "@fastify/rate-limit";
 import { setupFastifyErrorHandler } from "@sentry/node";
 import { healthRoutes } from "./routes/health.route.js";
 import { authRoutes } from "./routes/auth.route.js";
+import { shopRoutes } from "./routes/shop.route.js";
 import { assertAuthDevModeSafe, isAuthDevModeEnabled } from "./auth/dev-mode.js";
 
 export function buildApp(): FastifyInstance {
@@ -29,11 +30,26 @@ export function buildApp(): FastifyInstance {
     origin: `http://localhost:${process.env["WEB_PORT"] ?? "5173"}`,
   });
   app.register(jwt, { secret: jwtSecret });
+  // preHandler для доменных роутов: валидный JWT обязателен, иначе 401.
+  // Способности берутся из request.user (payload /auth), роль-специфичные
+  // проверки — уже в самих роутах.
+  app.decorate(
+    "authenticate",
+    async function (request, reply): Promise<void> {
+      try {
+        await request.jwtVerify();
+      } catch {
+        // Без деталей: что именно не так с токеном — не подсказываем.
+        await reply.code(401).send({ error: "требуется авторизация" });
+      }
+    },
+  );
   // global: false — лимиты вешаются точечно через config.rateLimit роута
   // (сейчас только /auth), а не на всё API разом.
   app.register(rateLimit, { global: false });
   app.register(healthRoutes);
   app.register(authRoutes);
+  app.register(shopRoutes);
   if (process.env["SENTRY_DSN_API"]) {
     setupFastifyErrorHandler(app);
   }
