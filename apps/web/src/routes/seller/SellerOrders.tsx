@@ -112,11 +112,11 @@ export function SellerOrders() {
               ))}
             </ul>
 
-            <div className="mt-3 flex items-center justify-between border-t border-tg-separator pt-3">
+            <div className="mt-3 space-y-2 border-t border-tg-separator pt-3">
               <span className="font-medium text-tg-text">
                 {formatPrice(order.totalKopecks)}
               </span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 {ORDER_STATUS_TRANSITIONS[order.status].map((next) => (
                   <Button
                     key={next}
