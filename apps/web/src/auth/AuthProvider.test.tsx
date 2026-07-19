@@ -1,8 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useSession } from "./AuthProvider";
 import { apiClient } from "../lib/api-client";
 import { clearSession, getToken } from "./token-store";
+import { InitDataUnavailableError } from "./init-data";
+import * as sessionModule from "./session";
 
 // AuthProvider на маунте меняет initData на сессию (POST /auth) и раздаёт её
 // через useSession. До готовности — загрузка, на провале — экран ошибки.
@@ -17,6 +19,7 @@ const post = vi.mocked(apiClient.post);
 afterEach(() => {
   clearSession();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 function Probe() {
@@ -67,6 +70,34 @@ describe("AuthProvider", () => {
 
     expect(await screen.findByText(/не удалось войти/i)).toBeInTheDocument();
     expect(screen.queryByText(/tg:/)).not.toBeInTheDocument();
+  });
+
+  it("прод вне Telegram (InitDataUnavailableError) — редирект на /landing.html, не экран ошибки", async () => {
+    vi.spyOn(sessionModule, "authenticate").mockRejectedValue(
+      new InitDataUnavailableError(),
+    );
+    const replaceMock = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...originalLocation, replace: replaceMock },
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(replaceMock).toHaveBeenCalledWith("/landing.html"),
+    );
+    expect(screen.queryByText(/не удалось войти/i)).not.toBeInTheDocument();
+
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   it("до ответа показывает загрузку", () => {

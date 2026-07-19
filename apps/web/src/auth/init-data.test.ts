@@ -1,5 +1,9 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { buildMockInitData, resolveInitData } from "./init-data";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  InitDataUnavailableError,
+  buildMockInitData,
+  resolveInitData,
+} from "./init-data";
 
 // Резолвер initData: реальный из Telegram-клиента, иначе (браузер вне
 // Telegram, dev) — mock, который бэк принимает при AUTH_DEV_MODE=true (см.
@@ -44,5 +48,12 @@ describe("resolveInitData", () => {
     setWebApp("");
     const raw = resolveInitData();
     expect(new URLSearchParams(raw).get("user")).not.toBeNull();
+  });
+
+  it("вне dev без Telegram-клиента бросает InitDataUnavailableError", () => {
+    vi.stubEnv("DEV", false);
+    setWebApp(undefined);
+    expect(() => resolveInitData()).toThrow(InitDataUnavailableError);
+    vi.unstubAllEnvs();
   });
 });

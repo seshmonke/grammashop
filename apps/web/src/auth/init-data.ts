@@ -25,6 +25,16 @@ export function buildMockInitData(user: {
   return params.toString();
 }
 
+// Отдельный класс ошибки (не голый Error) — AuthProvider перехватывает
+// именно этот случай и уводит на публичный лендинг вместо экрана
+// "не удалось войти" (см. TASKS.md, Спринт 15).
+export class InitDataUnavailableError extends Error {
+  constructor() {
+    super("initData недоступен — приложение открыто вне Telegram");
+    this.name = "InitDataUnavailableError";
+  }
+}
+
 export function resolveInitData(): string {
   const real = getWebApp()?.initData;
   if (real) return real;
@@ -33,5 +43,5 @@ export function resolveInitData(): string {
   }
   // Прод вне Telegram: настоящего initData нет и mock запрещён — честно
   // падаем, а не притворяемся авторизованными.
-  throw new Error("initData недоступен — приложение открыто вне Telegram");
+  throw new InitDataUnavailableError();
 }

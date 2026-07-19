@@ -1,0 +1,446 @@
+/* Токены — docs/design/DESIGN_SYSTEM.md. Лендинг — часть айдентики
+   платформы (не витрины продавца), токены не подлежат кастомизации. */
+:root {
+  --void: #0a0a0c;
+  --void-2: #131317;
+  --void-3: #1b1b21;
+  --chrome: #b8c4d0;
+  --chrome-light: #f0f4f8;
+  --chrome-dark: #5a6572;
+  --magenta: #ff2e9a;
+  --magenta-deep: #c4157a;
+  --ice: #6ee7ff;
+  --text: #f0f0f2;
+  --text-dim: #8a8f98;
+  --rule: rgba(184, 196, 208, 0.22);
+  --display: "Unbounded", "Arial Black", sans-serif;
+  --sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.55;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(184, 196, 208, 0.035) 0px,
+    rgba(184, 196, 208, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+a {
+  color: var(--ice);
+}
+
+/* Шапка */
+
+header.site {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 0 24px;
+}
+
+header.site nav {
+  white-space: nowrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.brand img {
+  width: 24px;
+  height: 24px;
+}
+
+.brand .wordmark {
+  font-family: var(--display);
+  font-variation-settings: "wght" 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.brand .wordmark .gramma {
+  background: linear-gradient(
+    180deg,
+    var(--chrome-light),
+    var(--chrome) 45%,
+    var(--chrome-dark)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.brand .wordmark .sep {
+  color: var(--magenta);
+  text-shadow: 0 0 8px rgba(255, 46, 154, 0.6);
+}
+
+.brand .wordmark .shop {
+  color: var(--chrome);
+}
+
+header.site nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.88rem;
+  margin-left: 16px;
+}
+
+header.site nav a:hover,
+header.site nav a:focus-visible {
+  color: var(--ice);
+}
+
+/* Хиро */
+
+.hero {
+  padding: 48px 0 40px;
+  text-align: center;
+}
+
+.hero h1 {
+  font-family: var(--display);
+  font-variation-settings: "wght" 900;
+  font-size: clamp(1.9rem, 7vw, 2.9rem);
+  line-height: 1.15;
+  margin: 0 0 20px;
+}
+
+.word-carousel {
+  display: block;
+  width: 100%;
+  height: 1.25em;
+  overflow: hidden;
+  color: var(--magenta);
+  text-shadow: 0 0 14px rgba(255, 46, 154, 0.5);
+  /* Отдельный (меньший) размер от h1: самая длинная фраза («курсов и
+     цифровых товаров») должна помещаться в одну строку без переноса —
+     high-фраза выше по размеру этого не гарантирует. */
+  font-size: clamp(0.85rem, 4.3vw, 2rem);
+}
+
+.word-carousel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: carousel 12.5s ease-in-out infinite;
+}
+
+.word-carousel li {
+  height: 1.25em;
+  line-height: 1.25em;
+  white-space: nowrap;
+}
+
+@keyframes carousel {
+  0%,
+  15% {
+    transform: translateY(0);
+  }
+  18%,
+  33% {
+    transform: translateY(-1.25em);
+  }
+  36%,
+  51% {
+    transform: translateY(-2.5em);
+  }
+  54%,
+  69% {
+    transform: translateY(-3.75em);
+  }
+  72%,
+  97% {
+    transform: translateY(-5em);
+  }
+  100% {
+    transform: translateY(-6.25em);
+  }
+}
+
+.hero .subtitle {
+  color: var(--text-dim);
+  font-size: 1.05rem;
+  max-width: 480px;
+  margin: 0 auto 28px;
+}
+
+.hook {
+  display: inline-block;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 0.92rem;
+  color: var(--ice);
+  margin-bottom: 32px;
+}
+
+.hook strong {
+  color: var(--text);
+}
+
+.cta {
+  display: inline-block;
+  background: var(--magenta);
+  color: var(--void);
+  font-family: var(--display);
+  font-variation-settings: "wght" 700;
+  text-decoration: none;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  box-shadow: 0 0 24px rgba(255, 46, 154, 0.45);
+}
+
+.cta:hover,
+.cta:focus-visible {
+  background: var(--magenta-deep);
+}
+
+.cta-secondary {
+  display: block;
+  margin-top: 14px;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.cta-secondary a {
+  color: var(--text-dim);
+  text-decoration: underline;
+}
+
+/* Секции */
+
+section {
+  padding: 40px 0;
+  border-top: 1px solid var(--rule);
+}
+
+section h2 {
+  font-family: var(--display);
+  font-variation-settings: "wght" 700;
+  font-size: 1.4rem;
+  margin: 0 0 24px;
+  text-align: center;
+}
+
+.eyebrow {
+  display: block;
+  font-family: var(--display);
+  font-variation-settings: "wght" 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ice);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+/* Как это работает */
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.steps li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--void-2);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.steps .n {
+  font-family: var(--display);
+  font-variation-settings: "wght" 700;
+  color: var(--ice);
+  text-shadow: 0 0 10px rgba(110, 231, 255, 0.5);
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+/* Тарифы */
+
+.pricing {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.plan {
+  background: var(--void-2);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.plan.featured {
+  border-color: var(--magenta);
+  box-shadow: 0 0 20px rgba(255, 46, 154, 0.25);
+}
+
+.plan .name {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.plan .price {
+  font-family: var(--display);
+  font-variation-settings: "wght" 900;
+  font-size: 1.7rem;
+  color: var(--magenta);
+}
+
+.plan .cards {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin-top: 6px;
+}
+
+.plan .ref {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-style: italic;
+  margin-top: 8px;
+}
+
+/* Тезис без комиссии */
+
+.claim {
+  text-align: center;
+  font-family: var(--display);
+  font-variation-settings: "wght" 700;
+  font-size: 1.3rem;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.claim span {
+  color: var(--ice);
+}
+
+.claim p {
+  font-family: var(--sans);
+  font-variation-settings: normal;
+  font-weight: 400;
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  margin-top: 14px;
+}
+
+/* Живой пример */
+
+.demo {
+  text-align: center;
+}
+
+.demo p {
+  color: var(--text-dim);
+  max-width: 440px;
+  margin: 0 auto 20px;
+}
+
+.demo a.demo-link {
+  display: inline-block;
+  border: 1px solid var(--ice);
+  color: var(--ice);
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+.demo a.demo-link:hover,
+.demo a.demo-link:focus-visible {
+  background: rgba(110, 231, 255, 0.1);
+}
+
+/* FAQ */
+
+.faq dt {
+  font-family: var(--display);
+  font-variation-settings: "wght" 500;
+  font-size: 0.98rem;
+  margin: 20px 0 6px;
+}
+
+.faq dt:first-child {
+  margin-top: 0;
+}
+
+.faq dd {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+}
+
+/* Финальный CTA */
+
+.final-cta {
+  text-align: center;
+}
+
+/* Футер */
+
+footer.site {
+  border-top: 1px solid var(--rule);
+  padding-top: 24px;
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+footer.site nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  margin-right: 16px;
+}
+
+footer.site nav a:hover,
+footer.site nav a:focus-visible {
+  color: var(--ice);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word-carousel ul {
+    animation: none;
+  }
+}

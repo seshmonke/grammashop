@@ -7,6 +7,19 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <title>grammashop</title>
+    <!-- OG-теги продублированы из landing.html: превью-боты (Telegram,
+         соцсети) не исполняют JS, поэтому редирект на /landing.html им не
+         помогает — они видят только статический <head> того, что реально
+         отдаётся на "/" (см. TASKS.md, Спринт 15). -->
+    <meta name="description" content="Оформи подписку — получи ссылку на витрину в Telegram. Без BotFather, без своего сайта, без комиссии с продаж. От 1 ₽ в месяц." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="grammashop" />
+    <meta property="og:title" content="grammashop — магазин в Telegram без своего бота" />
+    <meta property="og:description" content="Оформи подписку — получи ссылку на витрину в Telegram. Без BotFather, без своего сайта, без комиссии с продаж. От 1 ₽ в месяц." />
+    <meta property="og:image" content="https://grammashop.online/og-image.png" />
+    <meta property="og:url" content="https://grammashop.online/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
     <!-- Telegram WebApp SDK: создаёт window.Telegram.WebApp (initData,
          start_param, themeParams). Обязателен внутри Telegram; вне его
          initData пустой — фронт уходит в dev-mock (см. auth/init-data.ts). -->

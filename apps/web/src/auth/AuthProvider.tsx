@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { authenticate, type Session } from "./session";
 import { registerReauth, setToken } from "./token-store";
 import { SessionContext, useSession } from "./session-context";
+import { InitDataUnavailableError } from "./init-data";
 
 // Бутстрап сессии на входе в приложение (см. STACK.md#роутинг: main.tsx
 // читает initData, бэк выдаёт сессию с ролью). Пока обмен идёт — загрузка;
@@ -39,7 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(next);
         setStatus("ready");
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        // Прод вне Telegram — не поломанная сессия, а публичный посетитель:
+        // на публичный лендинг, а не в тупиковый экран "не удалось войти"
+        // (см. TASKS.md, Спринт 15).
+        if (error instanceof InitDataUnavailableError) {
+          window.location.replace("/landing.html");
+          return;
+        }
         if (active) setStatus("error");
       });
 
