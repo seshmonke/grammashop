@@ -10,3 +10,13 @@ export function formatPrice(kopecks: number): string {
     maximumFractionDigits: 2,
   }).format(kopecks / 100);
 }
+
+// Формы админки продавца работают в рублях (привычная единица ввода), но
+// контракт API — только копейки (см. STACK.md#доменная-схема-v1).
+export function rublesToKopecks(rubles: number): number {
+  return Math.round(rubles * 100);
+}
+
+export function kopecksToRubles(kopecks: number): number {
+  return kopecks / 100;
+}

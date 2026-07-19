@@ -6,6 +6,7 @@ import { setupFastifyErrorHandler } from "@sentry/node";
 import { healthRoutes } from "./routes/health.route.js";
 import { authRoutes } from "./routes/auth.route.js";
 import { shopRoutes } from "./routes/shop.route.js";
+import { productsRoutes } from "./routes/products.route.js";
 import { assertAuthDevModeSafe, isAuthDevModeEnabled } from "./auth/dev-mode.js";
 
 export function buildApp(): FastifyInstance {
@@ -19,7 +20,12 @@ export function buildApp(): FastifyInstance {
   // валит старт, а не поднимается с дырой (см. auth/dev-mode.ts).
   assertAuthDevModeSafe();
 
-  const app = Fastify({ logger: true });
+  // trustProxy: единственная точка входа снаружи — Caddy (порты
+  // api/postgres/web не публикуются, см. docker-compose.prod.yml), поэтому
+  // безопасно доверять X-Forwarded-For целиком. Без этого Fastify видит
+  // IP прокси-контейнера, и rate limit на /auth делит один счётчик на
+  // всех пользователей.
+  const app = Fastify({ logger: true, trustProxy: true });
   if (isAuthDevModeEnabled()) {
     app.log.warn(
       "AUTH_DEV_MODE включён: /auth принимает mock-initData без проверки " +
@@ -50,6 +56,7 @@ export function buildApp(): FastifyInstance {
   app.register(healthRoutes);
   app.register(authRoutes);
   app.register(shopRoutes);
+  app.register(productsRoutes);
   if (process.env["SENTRY_DSN_API"]) {
     setupFastifyErrorHandler(app);
   }

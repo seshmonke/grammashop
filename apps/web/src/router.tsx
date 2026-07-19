@@ -3,6 +3,7 @@ import { Landing } from "./auth/Landing";
 import { RequireSeller, RequireAdmin } from "./auth/guards";
 import { ProductDetail } from "./routes/storefront/ProductDetail";
 import { SellerHome } from "./routes/seller/SellerHome";
+import { ProductForm } from "./routes/seller/ProductForm";
 import { PlatformHome } from "./routes/platform/PlatformHome";
 
 // Три группы маршрутов одного SPA (витрина/продавец/платформа), см.
@@ -18,6 +19,22 @@ export const router = createBrowserRouter([
     element: (
       <RequireSeller>
         <SellerHome />
+      </RequireSeller>
+    ),
+  },
+  {
+    path: "/seller/products/new",
+    element: (
+      <RequireSeller>
+        <ProductForm />
+      </RequireSeller>
+    ),
+  },
+  {
+    path: "/seller/products/:productId/edit",
+    element: (
+      <RequireSeller>
+        <ProductForm />
       </RequireSeller>
     ),
   },

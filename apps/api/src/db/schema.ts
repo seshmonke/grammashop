@@ -58,7 +58,8 @@ export const sellers = pgTable("sellers", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 // 1:1 к продавцу в v1 — unique на seller_id гарантирует единственную
@@ -79,7 +80,8 @@ export const subscriptions = pgTable("subscriptions", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const subscriptionPayments = pgTable(
@@ -119,7 +121,8 @@ export const products = pgTable("products", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const productVariants = pgTable("product_variants", {
@@ -139,7 +142,8 @@ export const productVariants = pgTable("product_variants", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const productImages = pgTable("product_images", {
@@ -175,7 +179,8 @@ export const orders = pgTable("orders", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const orderItems = pgTable("order_items", {
