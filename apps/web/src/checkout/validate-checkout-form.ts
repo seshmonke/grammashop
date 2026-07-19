@@ -8,7 +8,11 @@ import type { CheckoutFormValues } from "./build-order-request";
 
 export type CheckoutFormErrors = Partial<Record<keyof CheckoutFormValues, string>>;
 
-const FIELD_MESSAGES: Record<string, string> = {
+// Для пустого поля — понятное «Укажите …» вместо технического сообщения
+// Zod про минимальную длину. Для непустого, но неверного значения (сейчас
+// это только телефон не в формате +7XXXXXXXXXX) — используется сообщение
+// самой схемы (checkoutFormSchema, packages/shared): оно уже конкретное.
+const EMPTY_FIELD_MESSAGES: Record<string, string> = {
   buyerFullName: "Укажите ФИО",
   buyerPhone: "Укажите телефон",
   buyerAddress: "Укажите адрес доставки",
@@ -29,9 +33,13 @@ export function validateCheckoutForm(form: CheckoutFormValues): CheckoutFormErro
   const errors: CheckoutFormErrors = {};
   for (const issue of result.error.issues) {
     const field = issue.path[0] as keyof CheckoutFormValues | undefined;
-    if (field && !errors[field]) {
-      errors[field] = FIELD_MESSAGES[field] ?? issue.message;
-    }
+    if (!field || errors[field]) continue;
+    // consent — булево «пустое» значение — false, а не строка; для него
+    // технического сообщения схемы («Invalid literal value…») никогда нет
+    // смысла показывать, дружелюбный текст всегда в приоритете.
+    const isEmpty =
+      field === "consent" ? true : form[field].toString().trim() === "";
+    errors[field] = isEmpty ? EMPTY_FIELD_MESSAGES[field] : issue.message;
   }
   return errors;
 }

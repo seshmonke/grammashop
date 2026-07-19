@@ -24,6 +24,17 @@ function emptyForm(): CheckoutFormValues {
   return { buyerFullName: "", buyerPhone: "", buyerAddress: "", buyerComment: "", consent: false };
 }
 
+type TouchableField = keyof Omit<CheckoutFormValues, "buyerComment">;
+
+// Поле подсвечивается только после того, как пользователь его тронул —
+// не сразу пустой красной формой при заходе на экран. Как только поле
+// становится валидным, обводка сразу зеленеет — не дожидаясь потери
+// фокуса или отправки формы.
+function fieldBorderClass(touched: boolean, hasError: boolean): string {
+  if (!touched) return "border-tg-separator";
+  return hasError ? "border-tg-destructive" : "border-emerald-500";
+}
+
 function SuccessScreen({ order }: { order: CreateOrderResponse }) {
   return (
     <div className="min-h-dvh bg-tg-bg px-4 pb-8 pt-[calc(1.5rem+env(safe-area-inset-top))]">
@@ -68,8 +79,18 @@ export function CheckoutPage() {
   const navigate = useNavigate();
   const { state, dispatch } = useCart();
   const [form, setForm] = useState<CheckoutFormValues>(emptyForm());
-  const [errors, setErrors] = useState<CheckoutFormErrors>({});
+  const [touched, setTouched] = useState<Partial<Record<TouchableField, boolean>>>({});
   const createOrder = useCreateOrder(state.sellerId ?? 0);
+
+  // Живая валидация — та же Zod-схема на каждое изменение формы (дешёвая
+  // синхронная проверка, дебаунс не нужен). errors показываются только для
+  // тронутых полей (см. fieldBorderClass); попытка отправки трогает сразу
+  // все поля — чтобы нельзя было отправить форму, ничего не заполнив.
+  const errors: CheckoutFormErrors = validateCheckoutForm(form);
+
+  function touch(field: TouchableField) {
+    setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
+  }
 
   if (state.items.length === 0 && !createOrder.data) {
     return (
@@ -88,9 +109,15 @@ export function CheckoutPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const fieldErrors = validateCheckoutForm(form);
-    setErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      setTouched({
+        buyerFullName: true,
+        buyerPhone: true,
+        buyerAddress: true,
+        consent: true,
+      });
+      return;
+    }
 
     const request = buildCreateOrderRequest(state.items, form);
     await createOrder.mutateAsync(request);
@@ -115,11 +142,14 @@ export function CheckoutPage() {
             <input
               id="buyerFullName"
               value={form.buyerFullName}
-              onChange={(e) => setForm((f) => ({ ...f, buyerFullName: e.target.value }))}
-              aria-invalid={errors.buyerFullName ? true : undefined}
-              className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
+              onChange={(e) => {
+                setForm((f) => ({ ...f, buyerFullName: e.target.value }));
+                touch("buyerFullName");
+              }}
+              aria-invalid={touched.buyerFullName && errors.buyerFullName ? true : undefined}
+              className={`w-full rounded-lg border bg-tg-surface px-3 py-2 text-tg-text ${fieldBorderClass(!!touched.buyerFullName, !!errors.buyerFullName)}`}
             />
-            {errors.buyerFullName && (
+            {touched.buyerFullName && errors.buyerFullName && (
               <p className="mt-1 text-sm text-tg-destructive">{errors.buyerFullName}</p>
             )}
           </div>
@@ -131,12 +161,16 @@ export function CheckoutPage() {
             <input
               id="buyerPhone"
               type="tel"
+              placeholder="+7XXXXXXXXXX"
               value={form.buyerPhone}
-              onChange={(e) => setForm((f) => ({ ...f, buyerPhone: e.target.value }))}
-              aria-invalid={errors.buyerPhone ? true : undefined}
-              className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
+              onChange={(e) => {
+                setForm((f) => ({ ...f, buyerPhone: e.target.value }));
+                touch("buyerPhone");
+              }}
+              aria-invalid={touched.buyerPhone && errors.buyerPhone ? true : undefined}
+              className={`w-full rounded-lg border bg-tg-surface px-3 py-2 text-tg-text ${fieldBorderClass(!!touched.buyerPhone, !!errors.buyerPhone)}`}
             />
-            {errors.buyerPhone && (
+            {touched.buyerPhone && errors.buyerPhone && (
               <p className="mt-1 text-sm text-tg-destructive">{errors.buyerPhone}</p>
             )}
           </div>
@@ -148,12 +182,15 @@ export function CheckoutPage() {
             <textarea
               id="buyerAddress"
               value={form.buyerAddress}
-              onChange={(e) => setForm((f) => ({ ...f, buyerAddress: e.target.value }))}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, buyerAddress: e.target.value }));
+                touch("buyerAddress");
+              }}
               rows={2}
-              aria-invalid={errors.buyerAddress ? true : undefined}
-              className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
+              aria-invalid={touched.buyerAddress && errors.buyerAddress ? true : undefined}
+              className={`w-full rounded-lg border bg-tg-surface px-3 py-2 text-tg-text ${fieldBorderClass(!!touched.buyerAddress, !!errors.buyerAddress)}`}
             />
-            {errors.buyerAddress && (
+            {touched.buyerAddress && errors.buyerAddress && (
               <p className="mt-1 text-sm text-tg-destructive">{errors.buyerAddress}</p>
             )}
           </div>
@@ -180,13 +217,16 @@ export function CheckoutPage() {
               <input
                 type="checkbox"
                 checked={form.consent}
-                onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))}
-                aria-invalid={errors.consent ? true : undefined}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, consent: e.target.checked }));
+                  touch("consent");
+                }}
+                aria-invalid={touched.consent && errors.consent ? true : undefined}
                 className="mt-0.5"
               />
               Согласен(на) на обработку персональных данных для оформления заказа
             </label>
-            {errors.consent && (
+            {touched.consent && errors.consent && (
               <p className="mt-1 text-sm text-tg-destructive">{errors.consent}</p>
             )}
           </div>

@@ -13,12 +13,21 @@ export const orderItemInputSchema = z.object({
 });
 export type OrderItemInput = z.infer<typeof orderItemInputSchema>;
 
+// Формат телефона — только РФ (+7XXXXXXXXXX, 10 цифр после кода страны):
+// решение 20.07.2026, аудитория v1 — российские продавцы/покупатели (те же
+// границы, что у 152-ФЗ/ЮKassa/СДЭК). Международный формат — расширение на
+// будущее, не нужен для текущего рынка.
+export const RU_PHONE_REGEX = /^\+7\d{10}$/;
+
 // Поля формы чекаута без корзины (`items`) — вынесены отдельно, чтобы фронт
 // мог валидировать саму форму (react-компонент) той же схемой, что и бэк
 // тело запроса целиком, без второй копии правил (см. STACK.md#валидация).
 export const checkoutFormSchema = z.object({
   buyerFullName: z.string().trim().min(1).max(200),
-  buyerPhone: z.string().trim().min(1).max(30),
+  buyerPhone: z
+    .string()
+    .trim()
+    .regex(RU_PHONE_REGEX, "Формат: +7XXXXXXXXXX"),
   buyerAddress: z.string().trim().min(1).max(500),
   buyerComment: z.string().trim().max(1000).nullable().optional(),
   consent: z.literal(true),

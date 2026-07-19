@@ -20,8 +20,18 @@ describe("validateCheckoutForm", () => {
     expect(errors.buyerFullName).toBeDefined();
   });
 
-  it("пустой телефон — ошибка на поле buyerPhone", () => {
+  it("пустой телефон — ошибка «Укажите телефон»", () => {
     const errors = validateCheckoutForm({ ...validForm, buyerPhone: "" });
+    expect(errors.buyerPhone).toBe("Укажите телефон");
+  });
+
+  it("телефон не в формате +7XXXXXXXXXX — ошибка формата", () => {
+    const errors = validateCheckoutForm({ ...validForm, buyerPhone: "89990001122" });
+    expect(errors.buyerPhone).toBe("Формат: +7XXXXXXXXXX");
+  });
+
+  it("международный номер (не +7) — тоже ошибка формата", () => {
+    const errors = validateCheckoutForm({ ...validForm, buyerPhone: "+12025550123" });
     expect(errors.buyerPhone).toBeDefined();
   });
 
@@ -30,9 +40,9 @@ describe("validateCheckoutForm", () => {
     expect(errors.buyerAddress).toBeDefined();
   });
 
-  it("не отмечено согласие — ошибка на поле consent", () => {
+  it("не отмечено согласие — дружелюбное сообщение, не техническое от Zod", () => {
     const errors = validateCheckoutForm({ ...validForm, consent: false });
-    expect(errors.consent).toBeDefined();
+    expect(errors.consent).toBe("Отметьте согласие на обработку персональных данных");
   });
 
   it("несколько невалидных полей — ошибки по каждому", () => {
