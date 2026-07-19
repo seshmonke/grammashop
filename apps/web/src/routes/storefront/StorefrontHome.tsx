@@ -1,6 +1,7 @@
 import { resolveSellerId } from "../../shop/seller-id";
 import { useShopCatalog } from "../../shop/useShopCatalog";
 import { ProductCard } from "../../shop/ProductCard";
+import { MiniCartBar } from "../../cart/MiniCartBar";
 
 // Витрина продавца по seller_id из start_param (см. STACK.md#роутинг).
 // Read-only: товары из каталога, оформление заказа — отдельные задачи.
@@ -44,17 +45,18 @@ export function StorefrontHome() {
         )}
       </header>
 
-      <main className="space-y-3 p-4">
+      <main className="space-y-3 p-4 pb-24">
         {data.products.length === 0 ? (
           <p className="py-16 text-center text-tg-hint">
             В этом магазине пока нет товаров.
           </p>
         ) : (
           data.products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.id} product={product} sellerId={data.sellerId} />
           ))
         )}
       </main>
+      <MiniCartBar />
     </div>
   );
 }

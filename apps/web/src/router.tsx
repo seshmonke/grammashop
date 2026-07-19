@@ -2,6 +2,8 @@ import { createBrowserRouter } from "react-router-dom";
 import { Landing } from "./auth/Landing";
 import { RequireSeller, RequireAdmin } from "./auth/guards";
 import { ProductDetail } from "./routes/storefront/ProductDetail";
+import { CartPage } from "./routes/storefront/CartPage";
+import { CheckoutPage } from "./routes/storefront/CheckoutPage";
 import { SellerHome } from "./routes/seller/SellerHome";
 import { ProductForm } from "./routes/seller/ProductForm";
 import { PlatformHome } from "./routes/platform/PlatformHome";
@@ -14,6 +16,8 @@ export const router = createBrowserRouter([
   { path: "/", element: <Landing /> },
   // Карточка товара витрины (seller_id — из start_param, как и каталог).
   { path: "/product/:productId", element: <ProductDetail /> },
+  { path: "/cart", element: <CartPage /> },
+  { path: "/checkout", element: <CheckoutPage /> },
   {
     path: "/seller",
     element: (

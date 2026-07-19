@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { router } from "./router";
 import { queryClient } from "./lib/query-client";
 import { AuthProvider } from "./auth/AuthProvider";
+import { CartProvider } from "./cart/cart-context";
 import { initTelegram } from "./lib/telegram";
 import { initSentry } from "./sentry";
 import "./index.css";
@@ -24,7 +25,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <CartProvider>
+          <RouterProvider router={router} />
+        </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,

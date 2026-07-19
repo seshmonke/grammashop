@@ -7,6 +7,7 @@ import { healthRoutes } from "./routes/health.route.js";
 import { authRoutes } from "./routes/auth.route.js";
 import { shopRoutes } from "./routes/shop.route.js";
 import { productsRoutes } from "./routes/products.route.js";
+import { ordersRoutes } from "./routes/orders.route.js";
 import { assertAuthDevModeSafe, isAuthDevModeEnabled } from "./auth/dev-mode.js";
 
 export function buildApp(): FastifyInstance {
@@ -57,6 +58,7 @@ export function buildApp(): FastifyInstance {
   app.register(authRoutes);
   app.register(shopRoutes);
   app.register(productsRoutes);
+  app.register(ordersRoutes);
   if (process.env["SENTRY_DSN_API"]) {
     setupFastifyErrorHandler(app);
   }

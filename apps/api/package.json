@@ -25,7 +25,9 @@
     "@sentry/node": "^10.66.0",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.0",
-    "pg": "^8.22.0"
+    "grammy": "^1.45.1",
+    "pg": "^8.22.0",
+    "pg-boss": "^12.26.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
