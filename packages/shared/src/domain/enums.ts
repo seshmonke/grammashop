@@ -54,3 +54,15 @@ export type ProductStatus = z.infer<typeof productStatusSchema>;
 export const orderStatuses = ["new", "paid", "fulfilled", "canceled"] as const;
 export const orderStatusSchema = z.enum(orderStatuses);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
+
+// Допустимые переходы статуса заказа (см. CONCEPT.md#каталог-и-заказы):
+// «отменён» — из любого статуса до «выполнен», «выполнен»/«отменён» —
+// терминальные. Единый источник для бэка (валидация перехода в
+// orders.service.ts) и фронта (какие кнопки смены статуса показывать в
+// продавцовской админке) — правило не дублируется (см. STACK.md#валидация).
+export const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  new: ["paid", "canceled"],
+  paid: ["fulfilled", "canceled"],
+  fulfilled: [],
+  canceled: [],
+};

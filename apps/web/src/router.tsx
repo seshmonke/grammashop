@@ -6,6 +6,7 @@ import { CartPage } from "./routes/storefront/CartPage";
 import { CheckoutPage } from "./routes/storefront/CheckoutPage";
 import { SellerHome } from "./routes/seller/SellerHome";
 import { ProductForm } from "./routes/seller/ProductForm";
+import { SellerOrders } from "./routes/seller/SellerOrders";
 import { PlatformHome } from "./routes/platform/PlatformHome";
 
 // Три группы маршрутов одного SPA (витрина/продавец/платформа), см.
@@ -39,6 +40,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireSeller>
         <ProductForm />
+      </RequireSeller>
+    ),
+  },
+  {
+    path: "/seller/orders",
+    element: (
+      <RequireSeller>
+        <SellerOrders />
       </RequireSeller>
     ),
   },

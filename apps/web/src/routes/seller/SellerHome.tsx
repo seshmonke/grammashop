@@ -26,9 +26,14 @@ export function SellerHome() {
             <p className="text-sm text-tg-hint">{products.length} / 30</p>
           )}
         </div>
-        <Button asChild size="sm">
-          <Link to="/seller/products/new">Добавить</Link>
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/seller/orders">Заказы</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/seller/products/new">Добавить</Link>
+          </Button>
+        </div>
       </header>
 
       <main className="space-y-3 p-4">

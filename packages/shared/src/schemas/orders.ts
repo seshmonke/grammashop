@@ -67,3 +67,34 @@ export const createOrderResponseSchema = z.object({
   seller: orderSellerInfoSchema,
 });
 export type CreateOrderResponse = z.infer<typeof createOrderResponseSchema>;
+
+// Заказы в продавцовской админке (GET/PATCH /seller/orders, см. Спринт 13
+// docs/TASKS.md). ПДн покупателя (ФИО/телефон/адрес/комментарий) видны
+// только владельцу заказа — продавцу, у которого он оформлен, тот же
+// принцип, что и у реквизитов продавца в createOrderResponseSchema.
+export const sellerOrderSchema = z.object({
+  id: z.number(),
+  status: orderStatusSchema,
+  totalKopecks: z.number().int(),
+  createdAt: z.coerce.date(),
+  buyerFullName: z.string(),
+  buyerPhone: z.string(),
+  buyerAddress: z.string(),
+  buyerComment: z.string().nullable(),
+  items: z.array(orderItemSchema),
+});
+export type SellerOrder = z.infer<typeof sellerOrderSchema>;
+
+export const sellerOrderListResponseSchema = z.object({
+  orders: z.array(sellerOrderSchema),
+});
+export type SellerOrderListResponse = z.infer<
+  typeof sellerOrderListResponseSchema
+>;
+
+export const updateOrderStatusRequestSchema = z.object({
+  status: orderStatusSchema,
+});
+export type UpdateOrderStatusRequest = z.infer<
+  typeof updateOrderStatusRequestSchema
+>;

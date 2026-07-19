@@ -1,5 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm";
-import type { CreateOrderRequest, CreateOrderResponse } from "@grammashop/shared";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import type { CreateOrderRequest, CreateOrderResponse, OrderStatus, SellerOrder } from "@grammashop/shared";
+import { ORDER_STATUS_TRANSITIONS } from "@grammashop/shared";
 import { db } from "../db/client.js";
 import { orderItems, orders, products, productVariants, sellers } from "../db/schema.js";
 import { enqueueOrderNotification } from "../notifications/order-notification.js";
@@ -144,4 +145,119 @@ export async function createOrder(
     await enqueueOrderNotification(result.order.id);
   }
   return result;
+}
+
+async function loadOrderItems(orderId: number) {
+  return db
+    .select({
+      variantId: orderItems.variantId,
+      productName: orderItems.productNameSnapshot,
+      variantName: orderItems.variantNameSnapshot,
+      priceKopecks: orderItems.priceKopecks,
+      quantity: orderItems.quantity,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+}
+
+// Заказы в продавцовской админке (см. CONCEPT.md#каталог-и-заказы, Спринт 13
+// docs/TASKS.md). Ownership строго по sellerId — тот же паттерн, что и
+// listSellerProducts (products.service.ts): чужие заказы просто не
+// попадают в выборку.
+export async function listSellerOrders(sellerId: number): Promise<SellerOrder[]> {
+  const own = await db
+    .select({
+      id: orders.id,
+      status: orders.status,
+      totalKopecks: orders.totalKopecks,
+      createdAt: orders.createdAt,
+      buyerFullName: orders.buyerFullName,
+      buyerPhone: orders.buyerPhone,
+      buyerAddress: orders.buyerAddress,
+      buyerComment: orders.buyerComment,
+    })
+    .from(orders)
+    .where(eq(orders.sellerId, sellerId))
+    .orderBy(desc(orders.createdAt), desc(orders.id));
+
+  return Promise.all(
+    own.map(async (order) => ({ ...order, items: await loadOrderItems(order.id) })),
+  );
+}
+
+// null — заказ не найден или принадлежит другому продавцу (см.
+// findOwnedProduct в products.service.ts — тот же принцип).
+async function findOwnedOrder(sellerId: number, orderId: number) {
+  const [order] = await db
+    .select({ id: orders.id, status: orders.status })
+    .from(orders)
+    .where(and(eq(orders.id, orderId), eq(orders.sellerId, sellerId)));
+  return order ?? null;
+}
+
+// Смена статуса заказа продавцом (см. CONCEPT.md#каталог-и-заказы). Переходы
+// ограничены ORDER_STATUS_TRANSITIONS (единый источник с фронтом, см.
+// packages/shared/src/domain/enums.ts). Отмена возвращает остаток —
+// зеркально списанию в createOrder, тоже под блокировкой строк вариантов,
+// чтобы не разъехаться с параллельным заказом на тот же вариант.
+export async function updateOrderStatus(
+  sellerId: number,
+  orderId: number,
+  newStatus: OrderStatus,
+): Promise<
+  | { ok: true; order: SellerOrder }
+  | { ok: false; reason: "not_found" | "invalid_transition" }
+> {
+  const owned = await findOwnedOrder(sellerId, orderId);
+  if (!owned) return { ok: false, reason: "not_found" };
+  if (!ORDER_STATUS_TRANSITIONS[owned.status].includes(newStatus)) {
+    return { ok: false, reason: "invalid_transition" };
+  }
+
+  await db.transaction(async (tx) => {
+    if (newStatus === "canceled") {
+      const items = await tx
+        .select({ variantId: orderItems.variantId, quantity: orderItems.quantity })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId));
+      const variantIds = items
+        .map((i) => i.variantId)
+        .filter((id): id is number => id !== null);
+      if (variantIds.length > 0) {
+        const variantRows = await tx
+          .select({ id: productVariants.id, stock: productVariants.stock })
+          .from(productVariants)
+          .where(inArray(productVariants.id, variantIds))
+          .for("update");
+        const stockById = new Map(variantRows.map((v) => [v.id, v.stock]));
+        for (const item of items) {
+          if (item.variantId === null) continue;
+          const stock = stockById.get(item.variantId);
+          if (stock === undefined || stock === null) continue;
+          await tx
+            .update(productVariants)
+            .set({ stock: stock + item.quantity })
+            .where(eq(productVariants.id, item.variantId));
+        }
+      }
+    }
+
+    await tx.update(orders).set({ status: newStatus }).where(eq(orders.id, orderId));
+  });
+
+  const [updated] = await db
+    .select({
+      id: orders.id,
+      status: orders.status,
+      totalKopecks: orders.totalKopecks,
+      createdAt: orders.createdAt,
+      buyerFullName: orders.buyerFullName,
+      buyerPhone: orders.buyerPhone,
+      buyerAddress: orders.buyerAddress,
+      buyerComment: orders.buyerComment,
+    })
+    .from(orders)
+    .where(eq(orders.id, orderId));
+
+  return { ok: true, order: { ...updated!, items: await loadOrderItems(orderId) } };
 }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
-import { createOrderResponseSchema } from "@grammashop/shared";
+import { createOrderResponseSchema, sellerOrderListResponseSchema } from "@grammashop/shared";
 import { buildApp } from "../app.js";
 import { db } from "../db/client.js";
 import { orderItems, orders, products, productVariants, sellers } from "../db/schema.js";
@@ -252,6 +252,270 @@ describe("POST /shop/:sellerId/orders", () => {
     });
 
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+});
+
+// GET/PATCH /seller/orders — заказы в продавцовской админке (Спринт 13, см.
+// docs/TASKS.md, CONCEPT.md#каталог-и-заказы). Ownership строго по
+// sellerId из JWT — тот же паттерн, что и /seller/products (чужой заказ
+// просто не попадает в выборку/отдаёт 404, не 403).
+
+const OWNER_TG = 700500001;
+const OTHER_TG = 700500002;
+const ALL_SELLER_TG = [OWNER_TG, OTHER_TG];
+
+async function seedSellerAdmin(telegramId: number, username: string) {
+  const [seller] = await db
+    .insert(sellers)
+    .values({
+      telegramId,
+      telegramUsername: username,
+      fullName: "ФИО",
+      phone: "+70000000000",
+      shopName: "Магазин",
+      status: "active",
+    })
+    .returning({ id: sellers.id });
+  return seller!.id;
+}
+
+async function sellerTokenFor(
+  app: ReturnType<typeof buildApp>,
+  sellerId: number | null,
+): Promise<string> {
+  await app.ready();
+  return app.jwt.sign({ telegramId: 222, sellerId, isAdmin: false });
+}
+
+async function createTestOrder(
+  sellerId: number,
+  variantId: number,
+  opts: { quantity?: number; status?: "new" | "paid" | "fulfilled" | "canceled" } = {},
+) {
+  const [order] = await db
+    .insert(orders)
+    .values({
+      sellerId,
+      buyerTelegramId: 700500099,
+      status: opts.status ?? "new",
+      buyerFullName: "Пётр Петров",
+      buyerPhone: "+79990001122",
+      buyerAddress: "Санкт-Петербург, ул. Тестовая, 2",
+      buyerComment: null,
+      consentAt: new Date(),
+      totalKopecks: 300000 * (opts.quantity ?? 1),
+    })
+    .returning({ id: orders.id });
+  await db.insert(orderItems).values({
+    orderId: order!.id,
+    variantId,
+    productNameSnapshot: "Худи",
+    variantNameSnapshot: "M",
+    priceKopecks: 300000,
+    quantity: opts.quantity ?? 1,
+  });
+  return order!.id;
+}
+
+async function methodReq(
+  app: ReturnType<typeof buildApp>,
+  method: "GET" | "PATCH",
+  url: string,
+  token?: string,
+  body?: Record<string, unknown>,
+) {
+  return app.inject({
+    method,
+    url,
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+    payload: body,
+  });
+}
+
+describe("GET /seller/orders", () => {
+  beforeEach(async () => {
+    const stale = await db
+      .select({ id: sellers.id })
+      .from(sellers)
+      .where(inArray(sellers.telegramId, ALL_SELLER_TG));
+    if (stale.length) {
+      await db.delete(orders).where(
+        inArray(
+          orders.sellerId,
+          stale.map((s) => s.id),
+        ),
+      );
+    }
+    await db.delete(sellers).where(inArray(sellers.telegramId, ALL_SELLER_TG));
+  });
+
+  it("без JWT → 401", async () => {
+    const app = buildApp();
+    const res = await methodReq(app, "GET", "/seller/orders");
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("JWT без sellerId (покупатель) → 403", async () => {
+    const app = buildApp();
+    const token = await sellerTokenFor(app, null);
+    const res = await methodReq(app, "GET", "/seller/orders", token);
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("отдаёт только свои заказы, новые сверху, с ПДн покупателя и позициями", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const otherId = await seedSellerAdmin(OTHER_TG, "other_shop");
+    const { variantId } = await seedProductWithVariant(ownerId);
+    const { variantId: otherVariantId } = await seedProductWithVariant(otherId);
+
+    const firstOrderId = await createTestOrder(ownerId, variantId);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const secondOrderId = await createTestOrder(ownerId, variantId, { quantity: 2 });
+    await createTestOrder(otherId, otherVariantId);
+
+    const token = await sellerTokenFor(app, ownerId);
+    const res = await methodReq(app, "GET", "/seller/orders", token);
+
+    expect(res.statusCode).toBe(200);
+    const body = sellerOrderListResponseSchema.parse(res.json());
+    expect(body.orders.map((o) => o.id)).toEqual([secondOrderId, firstOrderId]);
+    expect(body.orders[0]!.buyerFullName).toBe("Пётр Петров");
+    expect(body.orders[0]!.buyerPhone).toBe("+79990001122");
+    expect(body.orders[0]!.items).toHaveLength(1);
+    expect(body.orders[0]!.items[0]!.quantity).toBe(2);
+    await app.close();
+  });
+});
+
+describe("PATCH /seller/orders/:id/status", () => {
+  beforeEach(async () => {
+    const stale = await db
+      .select({ id: sellers.id })
+      .from(sellers)
+      .where(inArray(sellers.telegramId, ALL_SELLER_TG));
+    if (stale.length) {
+      await db.delete(orders).where(
+        inArray(
+          orders.sellerId,
+          stale.map((s) => s.id),
+        ),
+      );
+    }
+    await db.delete(sellers).where(inArray(sellers.telegramId, ALL_SELLER_TG));
+  });
+
+  it("без JWT → 401", async () => {
+    const app = buildApp();
+    const res = await methodReq(app, "PATCH", "/seller/orders/1/status", undefined, {
+      status: "paid",
+    });
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("новый → оплачен: разрешено", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const { variantId } = await seedProductWithVariant(ownerId);
+    const orderId = await createTestOrder(ownerId, variantId);
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "paid",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("paid");
+    await app.close();
+  });
+
+  it("новый → выполнен напрямую: запрещено (400)", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const { variantId } = await seedProductWithVariant(ownerId);
+    const orderId = await createTestOrder(ownerId, variantId);
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "fulfilled",
+    });
+
+    expect(res.statusCode).toBe(400);
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("new");
+    await app.close();
+  });
+
+  it("из терминального статуса (выполнен) — запрещено (400)", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const { variantId } = await seedProductWithVariant(ownerId);
+    const orderId = await createTestOrder(ownerId, variantId, { status: "fulfilled" });
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "canceled",
+    });
+
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("отмена возвращает остаток варианта", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const { variantId } = await seedProductWithVariant(ownerId, { stock: 5 });
+    await db
+      .update(productVariants)
+      .set({ stock: 3 })
+      .where(eq(productVariants.id, variantId));
+    const orderId = await createTestOrder(ownerId, variantId, { quantity: 2 });
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "canceled",
+    });
+
+    expect(res.statusCode).toBe(200);
+    const [variant] = await db
+      .select({ stock: productVariants.stock })
+      .from(productVariants)
+      .where(eq(productVariants.id, variantId));
+    expect(variant!.stock).toBe(5);
+    await app.close();
+  });
+
+  it("чужой заказ (другого продавца) → 404", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const otherId = await seedSellerAdmin(OTHER_TG, "other_shop");
+    const { variantId } = await seedProductWithVariant(otherId);
+    const orderId = await createTestOrder(otherId, variantId);
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", `/seller/orders/${orderId}/status`, token, {
+      status: "paid",
+    });
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("несуществующий заказ → 404", async () => {
+    const app = buildApp();
+    const ownerId = await seedSellerAdmin(OWNER_TG, "owner_shop");
+    const token = await sellerTokenFor(app, ownerId);
+
+    const res = await methodReq(app, "PATCH", "/seller/orders/999999/status", token, {
+      status: "paid",
+    });
+
+    expect(res.statusCode).toBe(404);
     await app.close();
   });
 });
