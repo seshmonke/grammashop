@@ -13,6 +13,22 @@ export function priceVaries(variants: ShopVariant[]): boolean {
   return new Set(variants.map((v) => v.priceKopecks)).size > 1;
 }
 
+// Настоящая скидка — только когда старая цена строго больше текущей.
+// Продавец мог оставить в форме равные значения (не убрал старую цену) —
+// зачёркивать её в этом случае не нужно (см. ревью 19.07.2026, StoreFront).
+export function hasDiscount(variant: ShopVariant): boolean {
+  return (
+    variant.oldPriceKopecks != null &&
+    variant.oldPriceKopecks > variant.priceKopecks
+  );
+}
+
+export function discountPercent(variant: ShopVariant): number {
+  return Math.round(
+    (1 - variant.priceKopecks / variant.oldPriceKopecks!) * 100,
+  );
+}
+
 // stock: число 0 — нет в наличии; null — учёт выключен (всегда в наличии).
 export function isVariantOutOfStock(variant: ShopVariant): boolean {
   return variant.stock === 0;

@@ -3,7 +3,7 @@ import type { ShopVariant } from "@grammashop/shared";
 import { resolveSellerId } from "../../shop/seller-id";
 import { useShopCatalog } from "../../shop/useShopCatalog";
 import { formatPrice } from "../../lib/money";
-import { isVariantOutOfStock } from "../../shop/pricing";
+import { discountPercent, hasDiscount, isVariantOutOfStock } from "../../shop/pricing";
 
 // Карточка товара: варианты с ценами и наличием (см.
 // CONCEPT.md#каталог-и-заказы). Данные — из того же каталога, что и витрина
@@ -12,6 +12,7 @@ import { isVariantOutOfStock } from "../../shop/pricing";
 
 function VariantRow({ variant }: { variant: ShopVariant }) {
   const soldOut = isVariantOutOfStock(variant);
+  const discounted = hasDiscount(variant);
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-tg-separator py-3">
       <span className={soldOut ? "text-tg-hint" : "text-tg-text"}>
@@ -21,9 +22,14 @@ function VariantRow({ variant }: { variant: ShopVariant }) {
         {soldOut && (
           <span className="text-xs text-tg-destructive">нет в наличии</span>
         )}
-        {variant.oldPriceKopecks != null && (
+        {discounted && (
+          <span className="rounded-full bg-tg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-tg-destructive">
+            -{discountPercent(variant)}%
+          </span>
+        )}
+        {discounted && (
           <span className="text-sm text-tg-hint line-through">
-            {formatPrice(variant.oldPriceKopecks)}
+            {formatPrice(variant.oldPriceKopecks!)}
           </span>
         )}
         <span className={soldOut ? "text-tg-hint" : "font-medium text-tg-text"}>

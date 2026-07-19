@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ShopProduct, ShopVariant } from "@grammashop/shared";
-import { isProductSoldOut, minPriceKopecks, priceVaries } from "./pricing";
+import {
+  discountPercent,
+  hasDiscount,
+  isProductSoldOut,
+  minPriceKopecks,
+  priceVaries,
+} from "./pricing";
 
 const variant = (over: Partial<ShopVariant>): ShopVariant => ({
   id: 1,
@@ -35,6 +41,35 @@ describe("priceVaries", () => {
   });
   it("false — все варианты одной цены", () => {
     expect(priceVaries([variant({ priceKopecks: 100 }), variant({ priceKopecks: 100 })])).toBe(false);
+  });
+});
+
+describe("hasDiscount", () => {
+  it("false — старая цена не указана", () => {
+    expect(hasDiscount(variant({ oldPriceKopecks: null }))).toBe(false);
+  });
+  it("false — старая цена равна текущей (не настоящая скидка)", () => {
+    expect(
+      hasDiscount(variant({ priceKopecks: 2000, oldPriceKopecks: 2000 })),
+    ).toBe(false);
+  });
+  it("false — старая цена ниже текущей (не скидка, а рост цены)", () => {
+    expect(
+      hasDiscount(variant({ priceKopecks: 2000, oldPriceKopecks: 1000 })),
+    ).toBe(false);
+  });
+  it("true — старая цена выше текущей", () => {
+    expect(
+      hasDiscount(variant({ priceKopecks: 1200, oldPriceKopecks: 2000 })),
+    ).toBe(true);
+  });
+});
+
+describe("discountPercent", () => {
+  it("округляет процент скидки", () => {
+    expect(
+      discountPercent(variant({ priceKopecks: 1200, oldPriceKopecks: 2000 })),
+    ).toBe(40);
   });
 });
 
