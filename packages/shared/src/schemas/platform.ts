@@ -1,0 +1,55 @@
+import { z } from "zod";
+import {
+  sellerStatusSchema,
+  subscriptionStatusSchema,
+  subscriptionTierSchema,
+} from "../domain/enums.js";
+
+// Платформенная админка (GET/PATCH /platform/sellers, см. Спринт 14
+// docs/TASKS.md): список продавцов со статусом подписки + ручная
+// блокировка/разблокировка. Доступ — request.user.isAdmin, не sellerId
+// (другая проверка, чем у /seller/*, см. STACK.md#авторизация).
+
+// nullable — продавец может существовать без строки в subscriptions (пока
+// нет формы регистрации с оплатой, продуктовая карта п.3): подписка
+// заводится только вместе с seed-продавцом или будущей регистрацией.
+export const platformSellerSubscriptionSchema = z.object({
+  tier: subscriptionTierSchema,
+  status: subscriptionStatusSchema,
+  paidUntil: z.coerce.date().nullable(),
+});
+export type PlatformSellerSubscription = z.infer<
+  typeof platformSellerSubscriptionSchema
+>;
+
+export const platformSellerSchema = z.object({
+  id: z.number(),
+  shopName: z.string(),
+  telegramUsername: z.string(),
+  status: sellerStatusSchema,
+  createdAt: z.coerce.date(),
+  subscription: platformSellerSubscriptionSchema.nullable(),
+});
+export type PlatformSeller = z.infer<typeof platformSellerSchema>;
+
+export const platformSellerListResponseSchema = z.object({
+  sellers: z.array(platformSellerSchema),
+});
+export type PlatformSellerListResponse = z.infer<
+  typeof platformSellerListResponseSchema
+>;
+
+export const updateSellerStatusRequestSchema = z.object({
+  status: sellerStatusSchema,
+});
+export type UpdateSellerStatusRequest = z.infer<
+  typeof updateSellerStatusRequestSchema
+>;
+
+export const updateSellerStatusResponseSchema = z.object({
+  id: z.number(),
+  status: sellerStatusSchema,
+});
+export type UpdateSellerStatusResponse = z.infer<
+  typeof updateSellerStatusResponseSchema
+>;

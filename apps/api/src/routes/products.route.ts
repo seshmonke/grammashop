@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import {
   createProductRequestSchema,
   productVariantInputSchema,
@@ -7,6 +7,7 @@ import {
   sellerProductSchema,
   updateProductRequestSchema,
 } from "@grammashop/shared";
+import { requireSellerId } from "../auth/access.js";
 import {
   addVariant,
   createProduct,
@@ -20,16 +21,8 @@ import {
 // /seller/products — продавцовская админка товаров (CRUD, см.
 // STACK.md#роутинг). В отличие от /shop/:sellerId, здесь мало валидного
 // JWT — нужна привязанная запись продавца (request.user.sellerId), иначе
-// покупатель мог бы редактировать чужой каталог.
-function requireSellerId(request: FastifyRequest, reply: FastifyReply): number | null {
-  const sellerId = request.user.sellerId;
-  if (sellerId === null) {
-    reply.code(403).send({ error: "доступно только продавцу" });
-    return null;
-  }
-  return sellerId;
-}
-
+// покупатель мог бы редактировать чужой каталог. requireSellerId — общий
+// хелпер (auth/access.ts), перепроверяет статус продавца по БД.
 function parseIdParam(raw: string): number | null {
   const id = Number(raw);
   return Number.isInteger(id) && id > 0 ? id : null;
@@ -39,7 +32,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.addHook("preHandler", fastify.authenticate);
 
   fastify.get("/seller/products", async (request, reply) => {
-    const sellerId = requireSellerId(request, reply);
+    const sellerId = await requireSellerId(request, reply);
     if (sellerId === null) return;
 
     const list = await listSellerProducts(sellerId);
@@ -47,7 +40,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   fastify.post("/seller/products", async (request, reply) => {
-    const sellerId = requireSellerId(request, reply);
+    const sellerId = await requireSellerId(request, reply);
     if (sellerId === null) return;
 
     const parsed = createProductRequestSchema.safeParse(request.body);
@@ -66,7 +59,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   fastify.patch("/seller/products/:id", async (request, reply) => {
-    const sellerId = requireSellerId(request, reply);
+    const sellerId = await requireSellerId(request, reply);
     if (sellerId === null) return;
 
     const { id: raw } = request.params as { id: string };
@@ -89,7 +82,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   fastify.delete("/seller/products/:id", async (request, reply) => {
-    const sellerId = requireSellerId(request, reply);
+    const sellerId = await requireSellerId(request, reply);
     if (sellerId === null) return;
 
     const { id: raw } = request.params as { id: string };
@@ -107,7 +100,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   fastify.post("/seller/products/:id/variants", async (request, reply) => {
-    const sellerId = requireSellerId(request, reply);
+    const sellerId = await requireSellerId(request, reply);
     if (sellerId === null) return;
 
     const { id: raw } = request.params as { id: string };
@@ -137,7 +130,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.patch(
     "/seller/products/:id/variants/:variantId",
     async (request, reply) => {
-      const sellerId = requireSellerId(request, reply);
+      const sellerId = await requireSellerId(request, reply);
       if (sellerId === null) return;
 
       const { id: rawId, variantId: rawVariantId } = request.params as {
@@ -172,7 +165,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.delete(
     "/seller/products/:id/variants/:variantId",
     async (request, reply) => {
-      const sellerId = requireSellerId(request, reply);
+      const sellerId = await requireSellerId(request, reply);
       if (sellerId === null) return;
 
       const { id: rawId, variantId: rawVariantId } = request.params as {

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useSession } from "../../auth/session-context";
 import { formatPrice } from "../../lib/money";
 import { useDeleteProduct, useSellerProducts } from "../../seller/useSellerProducts";
 
@@ -7,6 +8,7 @@ import { useDeleteProduct, useSellerProducts } from "../../seller/useSellerProdu
 // 30 карточек (Тариф 1, см. CONCEPT.md#тарифы) проверяется на бэке — здесь
 // счётчик только информативный.
 export function SellerHome() {
+  const session = useSession();
   const { data: products, isLoading, isError } = useSellerProducts();
   const deleteProduct = useDeleteProduct();
 
@@ -27,6 +29,11 @@ export function SellerHome() {
           )}
         </div>
         <div className="flex shrink-0 gap-2">
+          {session.isAdmin && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/platform">Платформа</Link>
+            </Button>
+          )}
           <Button asChild variant="outline" size="sm">
             <Link to="/seller/orders">Заказы</Link>
           </Button>

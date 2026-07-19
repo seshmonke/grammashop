@@ -77,6 +77,17 @@ describe("/seller/products", () => {
       expect(res.statusCode).toBe(403);
       await app.close();
     });
+
+    it("продавца заблокировали после выдачи токена → 403 (не 200 до истечения TTL)", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const token = await tokenFor(app, { sellerId });
+      await db.update(sellers).set({ status: "blocked" }).where(eq(sellers.id, sellerId));
+
+      const res = await req(app, "GET", "/seller/products", token);
+      expect(res.statusCode).toBe(403);
+      await app.close();
+    });
   });
 
   describe("POST /seller/products", () => {

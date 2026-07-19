@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import {
   createOrderRequestSchema,
   createOrderResponseSchema,
@@ -6,20 +6,12 @@ import {
   sellerOrderSchema,
   updateOrderStatusRequestSchema,
 } from "@grammashop/shared";
+import { requireSellerId } from "../auth/access.js";
 import { createOrder, listSellerOrders, updateOrderStatus } from "../services/orders.service.js";
 
-// /seller/orders — та же проверка sellerId из JWT, что и в
+// /seller/orders — тот же общий requireSellerId (auth/access.ts), что и в
 // routes/products.route.ts (покупатель/JWT без sellerId не может смотреть
-// или менять статус заказов).
-function requireSellerId(request: FastifyRequest, reply: FastifyReply): number | null {
-  const sellerId = request.user.sellerId;
-  if (sellerId === null) {
-    reply.code(403).send({ error: "доступно только продавцу" });
-    return null;
-  }
-  return sellerId;
-}
-
+// или менять статус заказов; статус продавца перепроверяется по БД).
 function parseIdParam(raw: string): number | null {
   const id = Number(raw);
   return Number.isInteger(id) && id > 0 ? id : null;
@@ -71,7 +63,7 @@ export async function ordersRoutes(fastify: FastifyInstance): Promise<void> {
     "/seller/orders",
     { preHandler: [fastify.authenticate] },
     async (request, reply) => {
-      const sellerId = requireSellerId(request, reply);
+      const sellerId = await requireSellerId(request, reply);
       if (sellerId === null) return;
 
       const list = await listSellerOrders(sellerId);
@@ -83,7 +75,7 @@ export async function ordersRoutes(fastify: FastifyInstance): Promise<void> {
     "/seller/orders/:id/status",
     { preHandler: [fastify.authenticate] },
     async (request, reply) => {
-      const sellerId = requireSellerId(request, reply);
+      const sellerId = await requireSellerId(request, reply);
       if (sellerId === null) return;
 
       const { id: raw } = request.params as { id: string };
