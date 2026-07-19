@@ -5,6 +5,7 @@ import { useCart } from "../../cart/cart-context";
 import { cartTotalKopecks } from "../../cart/cart-reducer";
 import { buildCreateOrderRequest, type CheckoutFormValues } from "../../checkout/build-order-request";
 import { useCreateOrder } from "../../checkout/useCreateOrder";
+import { validateCheckoutForm, type CheckoutFormErrors } from "../../checkout/validate-checkout-form";
 import type { CreateOrderResponse } from "@grammashop/shared";
 
 // Чекаут Тарифа 1 (см. CONCEPT.md#каталог-и-заказы): без платёжного шлюза —
@@ -67,6 +68,7 @@ export function CheckoutPage() {
   const navigate = useNavigate();
   const { state, dispatch } = useCart();
   const [form, setForm] = useState<CheckoutFormValues>(emptyForm());
+  const [errors, setErrors] = useState<CheckoutFormErrors>({});
   const createOrder = useCreateOrder(state.sellerId ?? 0);
 
   if (state.items.length === 0 && !createOrder.data) {
@@ -84,16 +86,12 @@ export function CheckoutPage() {
     return <SuccessScreen order={createOrder.data} />;
   }
 
-  const canSubmit =
-    form.buyerFullName.trim() !== "" &&
-    form.buyerPhone.trim() !== "" &&
-    form.buyerAddress.trim() !== "" &&
-    form.consent &&
-    !createOrder.isPending;
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
+    const fieldErrors = validateCheckoutForm(form);
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
+
     const request = buildCreateOrderRequest(state.items, form);
     await createOrder.mutateAsync(request);
     dispatch({ type: "clear" });
@@ -118,8 +116,12 @@ export function CheckoutPage() {
               id="buyerFullName"
               value={form.buyerFullName}
               onChange={(e) => setForm((f) => ({ ...f, buyerFullName: e.target.value }))}
+              aria-invalid={errors.buyerFullName ? true : undefined}
               className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
             />
+            {errors.buyerFullName && (
+              <p className="mt-1 text-sm text-tg-destructive">{errors.buyerFullName}</p>
+            )}
           </div>
 
           <div>
@@ -131,8 +133,12 @@ export function CheckoutPage() {
               type="tel"
               value={form.buyerPhone}
               onChange={(e) => setForm((f) => ({ ...f, buyerPhone: e.target.value }))}
+              aria-invalid={errors.buyerPhone ? true : undefined}
               className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
             />
+            {errors.buyerPhone && (
+              <p className="mt-1 text-sm text-tg-destructive">{errors.buyerPhone}</p>
+            )}
           </div>
 
           <div>
@@ -144,8 +150,12 @@ export function CheckoutPage() {
               value={form.buyerAddress}
               onChange={(e) => setForm((f) => ({ ...f, buyerAddress: e.target.value }))}
               rows={2}
+              aria-invalid={errors.buyerAddress ? true : undefined}
               className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
             />
+            {errors.buyerAddress && (
+              <p className="mt-1 text-sm text-tg-destructive">{errors.buyerAddress}</p>
+            )}
           </div>
 
           <div>
@@ -165,15 +175,21 @@ export function CheckoutPage() {
             <p className="text-sm text-tg-hint">{LIABILITY_DISCLAIMER}</p>
           </div>
 
-          <label className="flex items-start gap-2 text-sm text-tg-text">
-            <input
-              type="checkbox"
-              checked={form.consent}
-              onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))}
-              className="mt-0.5"
-            />
-            Согласен(на) на обработку персональных данных для оформления заказа
-          </label>
+          <div>
+            <label className="flex items-start gap-2 text-sm text-tg-text">
+              <input
+                type="checkbox"
+                checked={form.consent}
+                onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))}
+                aria-invalid={errors.consent ? true : undefined}
+                className="mt-0.5"
+              />
+              Согласен(на) на обработку персональных данных для оформления заказа
+            </label>
+            {errors.consent && (
+              <p className="mt-1 text-sm text-tg-destructive">{errors.consent}</p>
+            )}
+          </div>
 
           {createOrder.isError && (
             <p className="text-sm text-tg-destructive">
@@ -190,7 +206,7 @@ export function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={!canSubmit}
+            disabled={createOrder.isPending}
             className="w-full rounded-2xl bg-tg-accent py-3 text-center font-medium text-tg-accent-text disabled:opacity-40"
           >
             {createOrder.isPending ? "Оформляем…" : "Оформить заказ"}

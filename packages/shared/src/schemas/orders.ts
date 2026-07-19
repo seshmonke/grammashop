@@ -13,13 +13,20 @@ export const orderItemInputSchema = z.object({
 });
 export type OrderItemInput = z.infer<typeof orderItemInputSchema>;
 
-export const createOrderRequestSchema = z.object({
-  items: z.array(orderItemInputSchema).min(1),
+// Поля формы чекаута без корзины (`items`) — вынесены отдельно, чтобы фронт
+// мог валидировать саму форму (react-компонент) той же схемой, что и бэк
+// тело запроса целиком, без второй копии правил (см. STACK.md#валидация).
+export const checkoutFormSchema = z.object({
   buyerFullName: z.string().trim().min(1).max(200),
   buyerPhone: z.string().trim().min(1).max(30),
   buyerAddress: z.string().trim().min(1).max(500),
   buyerComment: z.string().trim().max(1000).nullable().optional(),
   consent: z.literal(true),
+});
+export type CheckoutFormFields = z.infer<typeof checkoutFormSchema>;
+
+export const createOrderRequestSchema = checkoutFormSchema.extend({
+  items: z.array(orderItemInputSchema).min(1),
 });
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 
