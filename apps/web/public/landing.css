@@ -230,6 +230,10 @@ header.site nav a:focus-visible {
   margin: 0 auto 28px;
   height: var(--slide);
   overflow: hidden;
+  /* Не полагаться на text-align:center у родителя (было верно в
+     .hero, но карусель переехала в секцию тарифов — секции не
+     центрируют текст по умолчанию) — самодостаточный компонент. */
+  text-align: center;
 }
 
 .slogan-carousel ul {
