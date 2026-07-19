@@ -38,10 +38,21 @@ body {
   );
 }
 
+/* Mobile-first: базовые правила — под узкий экран. Ширина растёт
+   плавно вместе с вьюпортом (без "полосы посередине" на широком
+   мониторе), но текстовый контент остаётся в узкой читаемой колонке —
+   .page держит внешнюю рамку (шапка/футер тянутся на всю ширину, как
+   у обычного маркетингового сайта), .content — вложенная колонка для
+   прозы и карточек. */
 .page {
-  max-width: 720px;
+  width: min(94vw, 1200px);
   margin: 0 auto;
-  padding: 24px 20px 64px;
+  padding: 24px clamp(20px, 4vw, 56px) 64px;
+}
+
+.content {
+  max-width: 820px;
+  margin: 0 auto;
 }
 
 a {
@@ -125,7 +136,7 @@ header.site nav a:focus-visible {
 .hero h1 {
   font-family: var(--display);
   font-variation-settings: "wght" 900;
-  font-size: clamp(1.9rem, 7vw, 2.9rem);
+  font-size: clamp(1.9rem, 6vw, 3.4rem);
   line-height: 1.15;
   margin: 0 0 20px;
 }
@@ -140,14 +151,15 @@ header.site nav a:focus-visible {
   /* Отдельный (меньший) размер от h1: самая длинная фраза («курсов и
      цифровых товаров») должна помещаться в одну строку без переноса —
      high-фраза выше по размеру этого не гарантирует. */
-  font-size: clamp(0.85rem, 4.3vw, 2rem);
+  font-size: clamp(0.82rem, 4vw, 2.3rem);
 }
 
 .word-carousel ul {
   margin: 0;
   padding: 0;
   list-style: none;
-  animation: carousel 12.5s ease-in-out infinite;
+  /* 9 слов * 2.5с/слово (тот же темп, что и с 5 словами раньше) */
+  animation: carousel 22.5s ease-in-out infinite;
 }
 
 .word-carousel li {
@@ -156,29 +168,48 @@ header.site nav a:focus-visible {
   white-space: nowrap;
 }
 
+/* Сгенерировано скриптом (9 реальных слов + дубликат первого для
+   бесшовной петли) — не редактировать проценты руками, при смене числа
+   слов пересчитать. */
 @keyframes carousel {
   0%,
-  15% {
-    transform: translateY(0);
+  8.89% {
+    transform: translateY(-0em);
   }
-  18%,
-  33% {
+  11.11%,
+  20% {
     transform: translateY(-1.25em);
   }
-  36%,
-  51% {
+  22.22%,
+  31.11% {
     transform: translateY(-2.5em);
   }
-  54%,
-  69% {
+  33.33%,
+  42.22% {
     transform: translateY(-3.75em);
   }
-  72%,
-  97% {
+  44.44%,
+  53.33% {
     transform: translateY(-5em);
   }
-  100% {
+  55.56%,
+  64.44% {
     transform: translateY(-6.25em);
+  }
+  66.67%,
+  75.56% {
+    transform: translateY(-7.5em);
+  }
+  77.78%,
+  86.67% {
+    transform: translateY(-8.75em);
+  }
+  88.89%,
+  97.78% {
+    transform: translateY(-10em);
+  }
+  100% {
+    transform: translateY(-11.25em);
   }
 }
 
@@ -195,7 +226,7 @@ header.site nav a:focus-visible {
   border-radius: 999px;
   padding: 10px 20px;
   font-size: 0.92rem;
-  color: var(--ice);
+  color: var(--text-dim);
   margin-bottom: 32px;
 }
 
@@ -268,6 +299,7 @@ section h2 {
   padding: 0;
   display: grid;
   gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
 .steps li {
@@ -278,6 +310,22 @@ section h2 {
   border: 1px solid var(--rule);
   border-radius: 14px;
   padding: 16px 18px;
+  min-width: 0;
+}
+
+.steps li .step-text {
+  min-width: 0;
+}
+
+.steps li code {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.steps li code::after {
+  content: ".";
 }
 
 .steps .n {
@@ -295,6 +343,11 @@ section h2 {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  /* Своя (уже "content") колонка — на широком экране 3 карточки тарифов
+     не должны разъезжаться на всю ширину .content и превращаться в
+     тонкие полоски с пустотой внутри. */
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .plan {
@@ -349,7 +402,7 @@ section h2 {
 }
 
 .claim span {
-  color: var(--ice);
+  color: var(--magenta);
 }
 
 .claim p {
@@ -389,6 +442,11 @@ section h2 {
 }
 
 /* FAQ */
+
+.faq {
+  max-width: 640px;
+  margin: 0 auto;
+}
 
 .faq dt {
   font-family: var(--display);
