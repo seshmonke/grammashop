@@ -21,7 +21,7 @@ const LIABILITY_DISCLAIMER =
   "сторон.";
 
 function emptyForm(): CheckoutFormValues {
-  return { buyerFullName: "", buyerPhone: "", buyerAddress: "", buyerComment: "", consent: false };
+  return { buyerFullName: "", buyerPhone: "+7", buyerAddress: "", buyerComment: "", consent: false };
 }
 
 type TouchableField = keyof Omit<CheckoutFormValues, "buyerComment">;

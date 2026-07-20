@@ -51,6 +51,7 @@ async function tokenFor(
   await app.ready();
   return app.jwt.sign({
     telegramId: 111,
+    telegramUsername: null,
     sellerId: opts.sellerId,
     isAdmin: opts.isAdmin ?? false,
   });
@@ -193,6 +194,139 @@ describe("/platform/sellers", () => {
         { status: "blocked" },
       );
       expect(res.statusCode).toBe(403);
+      await app.close();
+    });
+  });
+
+  describe("PATCH /platform/sellers/:id/grace", () => {
+    it("без isAdmin → 403", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", false);
+      const token = await tokenFor(app, { sellerId, isAdmin: false });
+      const res = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/grace`,
+        token,
+        { months: 1 },
+      );
+      expect(res.statusCode).toBe(403);
+      await app.close();
+    });
+
+    it("несуществующий продавец → 404", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const res = await req(
+        app,
+        "PATCH",
+        "/platform/sellers/99999999/grace",
+        adminToken,
+        { months: 1 },
+      );
+      expect(res.statusCode).toBe(404);
+      await app.close();
+    });
+
+    it("months некорректный (0, отрицательный, не число) → 400", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const sellerId = await seedSeller(SELLER_NO_SUB_TG, "Без подписки", false);
+
+      for (const months of [0, -1, "abc"]) {
+        const res = await req(
+          app,
+          "PATCH",
+          `/platform/sellers/${sellerId}/grace`,
+          adminToken,
+          { months },
+        );
+        expect(res.statusCode).toBe(400);
+      }
+      await app.close();
+    });
+
+    it("без подписки → создаёт подписку Тарифа 1, active, paidUntil ~ сейчас + N месяцев", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const sellerId = await seedSeller(SELLER_NO_SUB_TG, "Без подписки", false);
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/grace`,
+        adminToken,
+        { months: 2 },
+      );
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.subscription.tier).toBe("tier1");
+      expect(body.subscription.status).toBe("active");
+
+      const paidUntil = new Date(body.subscription.paidUntil);
+      const expected = new Date();
+      expected.setMonth(expected.getMonth() + 2);
+      expect(
+        Math.abs(paidUntil.getTime() - expected.getTime()),
+      ).toBeLessThan(60_000);
+      await app.close();
+    });
+
+    it("с активной подпиской в будущем → сдвигает paidUntil от текущей даты подписки, не от сейчас", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", true);
+      const [before] = await db
+        .select({ paidUntil: subscriptions.paidUntil })
+        .from(subscriptions)
+        .where(inArray(subscriptions.sellerId, [sellerId]));
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/grace`,
+        adminToken,
+        { months: 1 },
+      );
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      const paidUntil = new Date(body.subscription.paidUntil);
+      const expected = new Date(before!.paidUntil!);
+      expected.setMonth(expected.getMonth() + 1);
+      expect(
+        Math.abs(paidUntil.getTime() - expected.getTime()),
+      ).toBeLessThan(60_000);
+      await app.close();
+    });
+
+    it("с истёкшей/просроченной подпиской → отсчёт от сейчас, не от прошлого paidUntil", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", false);
+      const pastPaidUntil = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+      await db.insert(subscriptions).values({
+        sellerId,
+        tier: "tier1",
+        status: "suspended",
+        paidUntil: pastPaidUntil,
+      });
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/grace`,
+        adminToken,
+        { months: 1 },
+      );
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.subscription.status).toBe("active");
+      const paidUntil = new Date(body.subscription.paidUntil);
+      const expected = new Date();
+      expected.setMonth(expected.getMonth() + 1);
+      expect(
+        Math.abs(paidUntil.getTime() - expected.getTime()),
+      ).toBeLessThan(60_000);
       await app.close();
     });
   });

@@ -71,18 +71,26 @@ describe("assertAuthDevModeSafe", () => {
 });
 
 describe("parseDevInitData", () => {
-  it("извлекает telegram_id из user без проверки подписи", () => {
+  it("извлекает user (включая username) без проверки подписи", () => {
     const initData = new URLSearchParams({
-      user: JSON.stringify({ id: 555000111, first_name: "Dev" }),
+      user: JSON.stringify({
+        id: 555000111,
+        first_name: "Dev",
+        username: "devuser",
+      }),
       auth_date: "1",
     }).toString();
 
-    expect(parseDevInitData(initData)).toBe(555000111);
+    expect(parseDevInitData(initData)).toEqual({
+      id: 555000111,
+      first_name: "Dev",
+      username: "devuser",
+    });
   });
 
   it("принимает mock без поля hash (в реальном initData оно обязательно)", () => {
     const initData = "user=" + encodeURIComponent(JSON.stringify({ id: 42 }));
-    expect(parseDevInitData(initData)).toBe(42);
+    expect(parseDevInitData(initData)).toEqual({ id: 42 });
   });
 
   it("бросает InitDataError без поля user", () => {

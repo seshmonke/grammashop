@@ -53,3 +53,19 @@ export const updateSellerStatusResponseSchema = z.object({
 export type UpdateSellerStatusResponse = z.infer<
   typeof updateSellerStatusResponseSchema
 >;
+
+// Льгота — выдача N месяцев доступа без ЮKassa (см.
+// CONCEPT.md#оплата-подписки-продавцом, Спринт 21): сдвигает paid_until
+// вперёд от max(сейчас, текущий paid_until), заводит подписку Тарифа 1
+// в статусе active, если её ещё не было. Отдельной сущности «льгота» в
+// схеме нет — обычная активная подписка до даты.
+export const grantGraceRequestSchema = z.object({
+  months: z.number().int().positive().max(24),
+});
+export type GrantGraceRequest = z.infer<typeof grantGraceRequestSchema>;
+
+export const grantGraceResponseSchema = z.object({
+  id: z.number(),
+  subscription: platformSellerSubscriptionSchema,
+});
+export type GrantGraceResponse = z.infer<typeof grantGraceResponseSchema>;

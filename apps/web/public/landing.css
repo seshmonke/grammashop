@@ -158,8 +158,8 @@ header.site nav a:focus-visible {
   margin: 0;
   padding: 0;
   list-style: none;
-  /* 9 слов * 2.5с/слово (тот же темп, что и с 5 словами раньше) */
-  animation: carousel 22.5s ease-in-out infinite;
+  /* 18 слов * 2.5с/слово (тот же темп, что и с 9 словами раньше) */
+  animation: carousel 45s ease-in-out infinite;
 }
 
 .word-carousel li {
@@ -168,48 +168,84 @@ header.site nav a:focus-visible {
   white-space: nowrap;
 }
 
-/* Сгенерировано скриптом (9 реальных слов + дубликат первого для
+/* Сгенерировано скриптом (18 реальных слов + дубликат первого для
    бесшовной петли) — не редактировать проценты руками, при смене числа
    слов пересчитать. */
 @keyframes carousel {
   0%,
-  8.89% {
+  4.44% {
     transform: translateY(-0em);
   }
-  11.11%,
-  20% {
+  5.56%,
+  10% {
     transform: translateY(-1.25em);
   }
-  22.22%,
-  31.11% {
+  11.11%,
+  15.56% {
     transform: translateY(-2.5em);
   }
-  33.33%,
-  42.22% {
+  16.67%,
+  21.11% {
     transform: translateY(-3.75em);
   }
-  44.44%,
-  53.33% {
+  22.22%,
+  26.67% {
     transform: translateY(-5em);
   }
-  55.56%,
-  64.44% {
+  27.78%,
+  32.22% {
     transform: translateY(-6.25em);
   }
-  66.67%,
-  75.56% {
+  33.33%,
+  37.78% {
     transform: translateY(-7.5em);
   }
-  77.78%,
-  86.67% {
+  38.89%,
+  43.33% {
     transform: translateY(-8.75em);
   }
-  88.89%,
-  97.78% {
+  44.44%,
+  48.89% {
     transform: translateY(-10em);
   }
-  100% {
+  50%,
+  54.44% {
     transform: translateY(-11.25em);
+  }
+  55.56%,
+  60% {
+    transform: translateY(-12.5em);
+  }
+  61.11%,
+  65.56% {
+    transform: translateY(-13.75em);
+  }
+  66.67%,
+  71.11% {
+    transform: translateY(-15em);
+  }
+  72.22%,
+  76.67% {
+    transform: translateY(-16.25em);
+  }
+  77.78%,
+  82.22% {
+    transform: translateY(-17.5em);
+  }
+  83.33%,
+  87.78% {
+    transform: translateY(-18.75em);
+  }
+  88.89%,
+  93.33% {
+    transform: translateY(-20em);
+  }
+  94.44%,
+  98.89% {
+    transform: translateY(-21.25em);
+  }
+  100% {
+    transform: translateY(-22.5em);
   }
 }
 

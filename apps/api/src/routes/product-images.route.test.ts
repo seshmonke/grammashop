@@ -52,7 +52,7 @@ async function tokenFor(
   sellerId: number | null,
 ): Promise<string> {
   await app.ready();
-  return app.jwt.sign({ telegramId: 1, sellerId, isAdmin: false });
+  return app.jwt.sign({ telegramId: 1, telegramUsername: null, sellerId, isAdmin: false });
 }
 
 async function makePngBuffer(side: number): Promise<Buffer> {

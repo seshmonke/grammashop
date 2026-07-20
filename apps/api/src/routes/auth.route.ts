@@ -34,12 +34,15 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       let telegramId: number;
+      let telegramUsername: string | null;
       try {
         if (isAuthDevModeEnabled()) {
           // Dev-режим: mock-initData без подписи (см. auth/dev-mode.ts).
           // Активен только вне production, buildApp падает на старте, если
           // флаг выставлен в проде.
-          telegramId = parseDevInitData(parsed.data.initData);
+          const user = parseDevInitData(parsed.data.initData);
+          telegramId = user.id;
+          telegramUsername = user.username ?? null;
         } else {
           const botToken = process.env.TELEGRAM_BOT_TOKEN;
           if (!botToken) {
@@ -52,6 +55,7 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
             maxAgeSeconds: INIT_DATA_MAX_AGE_SECONDS,
           });
           telegramId = verified.user.id;
+          telegramUsername = verified.user.username ?? null;
         }
       } catch (err) {
         if (err instanceof InitDataError) {
@@ -65,13 +69,14 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
       const token = fastify.jwt.sign(
         {
           telegramId: context.telegramId,
+          telegramUsername,
           sellerId: context.sellerId,
           isAdmin: context.isAdmin,
         },
         { expiresIn: SESSION_TTL },
       );
 
-      return authResponseSchema.parse({ token, ...context });
+      return authResponseSchema.parse({ token, telegramUsername, ...context });
     },
   );
 }

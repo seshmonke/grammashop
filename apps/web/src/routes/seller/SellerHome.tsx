@@ -60,6 +60,9 @@ export function SellerHome() {
             </Button>
           )}
           <Button asChild variant="outline" size="sm">
+            <Link to="/seller/profile">Настройки</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
             <Link to="/seller/orders">Заказы</Link>
           </Button>
           <Button asChild size="sm" className="bg-magenta text-white hover:bg-magenta/90">

@@ -6,6 +6,7 @@ import rateLimit from "@fastify/rate-limit";
 import { setupFastifyErrorHandler } from "@sentry/node";
 import { healthRoutes } from "./routes/health.route.js";
 import { authRoutes } from "./routes/auth.route.js";
+import { sellerRoutes } from "./routes/seller.route.js";
 import { shopRoutes } from "./routes/shop.route.js";
 import { productsRoutes } from "./routes/products.route.js";
 import { ordersRoutes } from "./routes/orders.route.js";
@@ -63,6 +64,7 @@ export function buildApp(): FastifyInstance {
   app.register(rateLimit, { global: false });
   app.register(healthRoutes);
   app.register(authRoutes);
+  app.register(sellerRoutes);
   app.register(shopRoutes);
   app.register(productsRoutes);
   app.register(ordersRoutes);

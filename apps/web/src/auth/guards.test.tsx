@@ -12,6 +12,7 @@ import * as telegram from "../lib/telegram";
 const buyer: Session = {
   token: "t",
   telegramId: 1,
+  telegramUsername: null,
   sellerId: null,
   isAdmin: false,
 };
@@ -90,6 +91,7 @@ describe("Landing", () => {
               <Route path="/" element={<Landing />} />
               <Route path="/seller" element={<div>SELLER-PAGE</div>} />
               <Route path="/platform" element={<div>PLATFORM-PAGE</div>} />
+              <Route path="/register" element={<div>REGISTER-PAGE</div>} />
             </Routes>
           </MemoryRouter>
         </SessionContext.Provider>
@@ -117,13 +119,24 @@ describe("Landing", () => {
     expect(screen.queryByText("SELLER-PAGE")).not.toBeInTheDocument();
   });
 
-  it("покупателя без start_param оставляет на витрине-заглушке", () => {
+  it("покупателя без роли и start_param ведёт на экран-развилку", () => {
     // Без dev-фолбэка seller_id (иначе .env.local протекает в тест).
     vi.stubEnv("VITE_DEV_SELLER_ID", "");
     vi.spyOn(telegram, "getStartParam").mockReturnValue(undefined);
     renderLanding(buyer);
-    expect(
-      screen.getByText(/магазин открывается по ссылке/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/открыть магазин/i)).toBeInTheDocument();
+    expect(screen.getByText(/о платформе/i)).toBeInTheDocument();
+  });
+
+  it("start_param=register без магазина ведёт на форму регистрации", () => {
+    vi.spyOn(telegram, "getStartParam").mockReturnValue("register");
+    renderLanding(buyer);
+    expect(screen.getByText("REGISTER-PAGE")).toBeInTheDocument();
+  });
+
+  it("start_param=register с уже существующим магазином ведёт в админку", () => {
+    vi.spyOn(telegram, "getStartParam").mockReturnValue("register");
+    renderLanding(seller);
+    expect(screen.getByText("SELLER-PAGE")).toBeInTheDocument();
   });
 });

@@ -20,9 +20,14 @@ function signInitData(
   telegramId: number,
   token = TEST_BOT_TOKEN,
   authDate = Math.floor(Date.now() / 1000),
+  username?: string,
 ): string {
   const fields: Record<string, string> = {
-    user: JSON.stringify({ id: telegramId, first_name: "Test" }),
+    user: JSON.stringify({
+      id: telegramId,
+      first_name: "Test",
+      ...(username ? { username } : {}),
+    }),
     auth_date: String(authDate),
   };
   const dataCheckString = Object.keys(fields)
@@ -81,6 +86,37 @@ describe("POST /auth", () => {
     expect(payload.telegramId).toBe(BUYER_ID);
     expect(payload.sellerId).toBeNull();
     expect(payload.isAdmin).toBe(false);
+
+    await app.close();
+  });
+
+  it("username из initData попадает и в ответ, и в JWT", async () => {
+    const app = buildApp();
+    const response = await postAuth(
+      app,
+      signInitData(BUYER_ID, TEST_BOT_TOKEN, undefined, "someusername"),
+    );
+
+    expect(response.statusCode).toBe(200);
+    const body = authResponseSchema.parse(response.json());
+    expect(body.telegramUsername).toBe("someusername");
+
+    const payload = app.jwt.verify<{ telegramUsername: string | null }>(
+      body.token,
+    );
+    expect(payload.telegramUsername).toBe("someusername");
+
+    await app.close();
+  });
+
+  it("без username в Telegram → telegramUsername null", async () => {
+    const app = buildApp();
+    const response = await postAuth(app, signInitData(BUYER_ID));
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      authResponseSchema.parse(response.json()).telegramUsername,
+    ).toBeNull();
 
     await app.close();
   });

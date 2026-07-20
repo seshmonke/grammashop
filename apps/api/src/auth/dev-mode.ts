@@ -1,4 +1,4 @@
-import { parseTelegramUser } from "./init-data.js";
+import { parseTelegramUser, type TelegramUser } from "./init-data.js";
 
 // Dev-режим авторизации (см. STACK.md#авторизация, «Dev-режим»). Вне
 // Telegram настоящего initData нет — dev-сборка фронта шлёт mock-initData
@@ -35,11 +35,11 @@ export function assertAuthDevModeSafe(): void {
 }
 
 // Разбор mock-initData БЕЗ проверки подписи и без проверки возраста
-// auth_date — возвращает только telegram_id. Вызывать исключительно за
+// auth_date — возвращает пользователя целиком (id + username нужен
+// регистрации магазина). Вызывать исключительно за
 // isAuthDevModeEnabled(). Формат поля user — тот же, что в реальном
 // initData, поэтому переиспользуем parseTelegramUser.
-export function parseDevInitData(initData: string): number {
+export function parseDevInitData(initData: string): TelegramUser {
   const params = new URLSearchParams(initData);
-  const user = parseTelegramUser(params);
-  return user.id;
+  return parseTelegramUser(params);
 }

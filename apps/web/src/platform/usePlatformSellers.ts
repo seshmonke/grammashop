@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  grantGraceResponseSchema,
   platformSellerListResponseSchema,
   updateSellerStatusResponseSchema,
   type PlatformSeller,
@@ -32,6 +33,22 @@ export function useUpdateSellerStatus() {
         { status: args.status },
       );
       return updateSellerStatusResponseSchema.parse(data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PLATFORM_SELLERS_QUERY_KEY });
+    },
+  });
+}
+
+export function useGrantGrace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: number; months: number }) => {
+      const { data } = await apiClient.patch(
+        `/platform/sellers/${args.id}/grace`,
+        { months: args.months },
+      );
+      return grantGraceResponseSchema.parse(data);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PLATFORM_SELLERS_QUERY_KEY });

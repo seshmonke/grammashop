@@ -49,7 +49,7 @@ async function seedProductWithVariant(
 
 async function tokenFor(app: ReturnType<typeof buildApp>): Promise<string> {
   await app.ready();
-  return app.jwt.sign({ telegramId: BUYER_TG, sellerId: null, isAdmin: false });
+  return app.jwt.sign({ telegramId: BUYER_TG, telegramUsername: null, sellerId: null, isAdmin: false });
 }
 
 async function req(
@@ -285,7 +285,7 @@ async function sellerTokenFor(
   sellerId: number | null,
 ): Promise<string> {
   await app.ready();
-  return app.jwt.sign({ telegramId: 222, sellerId, isAdmin: false });
+  return app.jwt.sign({ telegramId: 222, telegramUsername: null, sellerId, isAdmin: false });
 }
 
 async function createTestOrder(

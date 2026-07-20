@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { inArray } from "drizzle-orm";
-import { shopCatalogResponseSchema } from "@grammashop/shared";
+import { shopCatalogResponseSchema, type SubscriptionStatus } from "@grammashop/shared";
 import { buildApp } from "../app.js";
 import { db } from "../db/client.js";
-import { products, productVariants, sellers } from "../db/schema.js";
+import { products, productVariants, sellers, subscriptions } from "../db/schema.js";
 
 // GET /shop/:sellerId — публичная витрина. Требует валидный JWT (любая
 // роль), отдаёт активного продавца и его активные товары без ПДн продавца.
+// Видимость витрины дополнительно требует подписку в статусе active/grace
+// (см. CONCEPT.md#оплата-подписки-продавцом, Спринт 21) — без подписки
+// (регистрация без оплаты) и после suspended/canceled витрина скрыта тем
+// же 404, что и у blocked-продавца, причина не раскрывается.
 
 const ACTIVE_TG = 700200001;
 const BLOCKED_TG = 700200002;
@@ -15,7 +19,7 @@ const ALL_TG = [ACTIVE_TG, BLOCKED_TG];
 async function tokenFor(app: ReturnType<typeof buildApp>): Promise<string> {
   // app.jwt появляется только после готовности плагинов (register async).
   await app.ready();
-  return app.jwt.sign({ telegramId: 111, sellerId: null, isAdmin: false });
+  return app.jwt.sign({ telegramId: 111, telegramUsername: null, sellerId: null, isAdmin: false });
 }
 
 function get(app: ReturnType<typeof buildApp>, path: string, token?: string) {
@@ -26,7 +30,9 @@ function get(app: ReturnType<typeof buildApp>, path: string, token?: string) {
   });
 }
 
-async function seedActiveShop(): Promise<number> {
+async function seedActiveShop(
+  subscriptionStatus: SubscriptionStatus | null = "active",
+): Promise<number> {
   const [seller] = await db
     .insert(sellers)
     .values({
@@ -41,6 +47,15 @@ async function seedActiveShop(): Promise<number> {
     })
     .returning({ id: sellers.id });
   const sellerId = seller!.id;
+
+  if (subscriptionStatus) {
+    await db.insert(subscriptions).values({
+      sellerId,
+      tier: "tier1",
+      status: subscriptionStatus,
+      paidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+  }
 
   // Активный товар (два варианта: скидка и нет-в-наличии), плюс скрытый —
   // он не должен попасть на витрину. sortPosition вперемешку.
@@ -153,6 +168,42 @@ describe("GET /shop/:sellerId", () => {
     expect(product.variants[0]!.oldPriceKopecks).toBe(60000);
     expect(product.variants[0]!.stock).toBeNull();
     expect(product.variants[1]!.stock).toBe(0);
+  });
+
+  it("без подписки (регистрация без оплаты) → 404 (витрина скрыта)", async () => {
+    const app = buildApp();
+    const sellerId = await seedActiveShop(null);
+
+    const res = await get(app, `/shop/${sellerId}`, await tokenFor(app));
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("подписка в статусе grace → 200 (витрина видима)", async () => {
+    const app = buildApp();
+    const sellerId = await seedActiveShop("grace");
+
+    const res = await get(app, `/shop/${sellerId}`, await tokenFor(app));
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it("подписка suspended → 404 (витрина скрыта)", async () => {
+    const app = buildApp();
+    const sellerId = await seedActiveShop("suspended");
+
+    const res = await get(app, `/shop/${sellerId}`, await tokenFor(app));
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("подписка canceled → 404 (витрина скрыта)", async () => {
+    const app = buildApp();
+    const sellerId = await seedActiveShop("canceled");
+
+    const res = await get(app, `/shop/${sellerId}`, await tokenFor(app));
+    expect(res.statusCode).toBe(404);
+    await app.close();
   });
 
   it("не отдаёт ПДн продавца (ФИО/телефон/реквизиты) в теле", async () => {

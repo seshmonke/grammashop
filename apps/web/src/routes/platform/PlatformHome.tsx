@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { SellerStatus, SubscriptionStatus, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
-import { usePlatformSellers, useUpdateSellerStatus } from "../../platform/usePlatformSellers";
+import {
+  useGrantGrace,
+  usePlatformSellers,
+  useUpdateSellerStatus,
+} from "../../platform/usePlatformSellers";
 
 // Платформенная админка: список продавцов + ручная блокировка/разблокировка
 // (см. CONCEPT.md#модерация-и-лимиты, STACK.md#роутинг, Спринт 14). Тот же
@@ -33,10 +38,22 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
   year: "numeric",
 });
 
+const DEFAULT_GRACE_MONTHS = 1;
+
 export function PlatformHome() {
   const session = useSession();
   const { data: sellers, isLoading, isError } = usePlatformSellers();
   const updateStatus = useUpdateSellerStatus();
+  const grantGrace = useGrantGrace();
+  const [graceMonths, setGraceMonths] = useState<Record<number, number>>({});
+
+  function handleGrantGrace(sellerId: number, shopName: string) {
+    const months = graceMonths[sellerId] ?? DEFAULT_GRACE_MONTHS;
+    if (!confirm(`Выдать «${shopName}» доступ на ${months} мес. без оплаты?`)) {
+      return;
+    }
+    grantGrace.mutate({ id: sellerId, months });
+  }
 
   function handleToggle(sellerId: number, shopName: string, current: SellerStatus) {
     const next: SellerStatus = current === "active" ? "blocked" : "active";
@@ -101,7 +118,31 @@ export function PlatformHome() {
               )}
             </div>
 
-            <div className="mt-3 flex justify-end border-t border-tg-separator pt-3">
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-tg-separator pt-3">
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={1}
+                  max={24}
+                  aria-label={`Месяцев доступа для ${seller.shopName}`}
+                  value={graceMonths[seller.id] ?? DEFAULT_GRACE_MONTHS}
+                  onChange={(e) =>
+                    setGraceMonths((m) => ({
+                      ...m,
+                      [seller.id]: Number(e.target.value) || DEFAULT_GRACE_MONTHS,
+                    }))
+                  }
+                  className="w-14 rounded-lg border border-tg-separator bg-tg-bg px-2 py-1 text-sm text-tg-text"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={grantGrace.isPending}
+                  onClick={() => handleGrantGrace(seller.id, seller.shopName)}
+                >
+                  Выдать доступ
+                </Button>
+              </div>
               <Button
                 variant={seller.status === "active" ? "ghost" : "outline"}
                 size="sm"

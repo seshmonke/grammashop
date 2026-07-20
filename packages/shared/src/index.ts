@@ -4,4 +4,5 @@ export * from "./schemas/shop.js";
 export * from "./schemas/products.js";
 export * from "./schemas/orders.js";
 export * from "./schemas/platform.js";
+export * from "./schemas/seller.js";
 export * from "./domain/enums.js";

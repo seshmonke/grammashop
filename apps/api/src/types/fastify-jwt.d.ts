@@ -3,10 +3,19 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 // Типы полезной нагрузки JWT (совпадают с тем, что кладёт /auth, см.
 // routes/auth.route.ts) и декоратора authenticate (app.ts).
 
+interface JwtPayload {
+  telegramId: number;
+  // null — у пользователя не задан username в Telegram (см.
+  // packages/shared/src/schemas/auth.ts).
+  telegramUsername: string | null;
+  sellerId: number | null;
+  isAdmin: boolean;
+}
+
 declare module "@fastify/jwt" {
   interface FastifyJWT {
-    payload: { telegramId: number; sellerId: number | null; isAdmin: boolean };
-    user: { telegramId: number; sellerId: number | null; isAdmin: boolean };
+    payload: JwtPayload;
+    user: JwtPayload;
   }
 }
 

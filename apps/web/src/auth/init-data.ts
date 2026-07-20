@@ -35,11 +35,22 @@ export class InitDataUnavailableError extends Error {
   }
 }
 
+// username dev-пользователя — нужен для отладки регистрации магазина
+// (Спринт 21: username обязателен из initData). Не задан по умолчанию —
+// как и раньше, чтобы не менять поведение существующих сценариев.
+const DEV_TELEGRAM_USERNAME = import.meta.env["VITE_DEV_TELEGRAM_USERNAME"] as
+  | string
+  | undefined;
+
 export function resolveInitData(): string {
   const real = getWebApp()?.initData;
   if (real) return real;
   if (import.meta.env.DEV) {
-    return buildMockInitData({ id: DEV_TELEGRAM_ID, first_name: "Dev" });
+    return buildMockInitData({
+      id: DEV_TELEGRAM_ID,
+      first_name: "Dev",
+      ...(DEV_TELEGRAM_USERNAME ? { username: DEV_TELEGRAM_USERNAME } : {}),
+    });
   }
   // Прод вне Telegram: настоящего initData нет и mock запрещён — честно
   // падаем, а не притворяемся авторизованными.

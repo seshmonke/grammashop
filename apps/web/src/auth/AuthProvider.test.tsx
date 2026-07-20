@@ -38,6 +38,7 @@ describe("AuthProvider", () => {
       data: {
         token: "jwt-abc",
         telegramId: 555,
+        telegramUsername: null,
         sellerId: 7,
         isAdmin: true,
       },

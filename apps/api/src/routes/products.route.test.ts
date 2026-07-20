@@ -35,6 +35,7 @@ async function tokenFor(
   await app.ready();
   return app.jwt.sign({
     telegramId: 111,
+    telegramUsername: null,
     sellerId: opts.sellerId,
     isAdmin: opts.isAdmin ?? false,
   });
