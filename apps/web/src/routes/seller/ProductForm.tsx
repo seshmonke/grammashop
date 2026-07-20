@@ -212,7 +212,7 @@ export function ProductForm() {
   return (
     <div className="min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <h1 className="text-lg font-semibold text-tg-text">
+        <h1 className="y2k-heading font-display text-lg text-tg-text">
           {isEdit ? "Изменить товар" : "Новый товар"}
         </h1>
       </header>
@@ -378,7 +378,11 @@ export function ProductForm() {
           {error && <p className="text-sm text-tg-destructive">{error}</p>}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={saving}>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-magenta text-white hover:bg-magenta/90"
+            >
               {saving ? "Сохранение…" : "Сохранить"}
             </Button>
             <Button

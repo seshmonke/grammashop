@@ -53,7 +53,7 @@ export function PlatformHome() {
     <div className="min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 flex items-center justify-between border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div>
-          <h1 className="text-lg font-semibold text-tg-text">Продавцы</h1>
+          <h1 className="y2k-heading font-display text-lg text-tg-text">Продавцы</h1>
           {sellers && <p className="text-sm text-tg-hint">{sellers.length}</p>}
         </div>
         {session.sellerId != null && (

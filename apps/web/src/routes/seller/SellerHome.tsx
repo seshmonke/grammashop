@@ -48,7 +48,7 @@ export function SellerHome() {
     <div className="min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 flex items-center justify-between border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div>
-          <h1 className="text-lg font-semibold text-tg-text">Товары</h1>
+          <h1 className="y2k-heading font-display text-lg text-tg-text">Товары</h1>
           {products && (
             <p className="text-sm text-tg-hint">{products.length} / 30</p>
           )}
@@ -62,7 +62,7 @@ export function SellerHome() {
           <Button asChild variant="outline" size="sm">
             <Link to="/seller/orders">Заказы</Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="bg-magenta text-white hover:bg-magenta/90">
             <Link to="/seller/products/new">Добавить</Link>
           </Button>
         </div>
