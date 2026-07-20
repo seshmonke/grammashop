@@ -76,4 +76,4 @@
 18. [Пакетная заливка товаров через Excel-шаблон](18-excel-bulk-import.md)
 19. [Минимальный Y2K-ДНК в админках](19-y2k-admin-dna.md)
 20. [Несколько фото в карточке товара](20-multiple-product-photos.md)
-21. [Регистрация магазина до оплаты + льготы](21-seller-registration-grace.md) — текущий
+21. [Регистрация магазина до оплаты + льготы](21-seller-registration-grace.md)
