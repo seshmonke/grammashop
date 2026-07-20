@@ -27,6 +27,43 @@
   --muted-foreground: oklch(0.556 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+
+  /* Y2K-брендинг витрины (см. docs/design/DESIGN_SYSTEM.md) — акцент
+     ПОВЕРХ темы Telegram выше, не замена: bg/text витрины остаются
+     --tg-*. Используется только компонентами витрины покупателя
+     (StorefrontHome/ProductCard/ProductDetail); обе админки эти токены
+     не подключают — остаются на плоской shadcn-системе выше. */
+  --void: #0a0a0c;
+  --void-2: #131317;
+  --void-3: #1b1b21;
+  --chrome: #b8c4d0;
+  --chrome-light: #f0f4f8;
+  --chrome-dark: #5a6572;
+  --magenta: #ff2e9a;
+  --magenta-deep: #c4157a;
+  --ice: #6ee7ff;
+  --brand-rule: rgba(184, 196, 208, 0.22);
+  --display: "Unbounded", "Arial Black", sans-serif;
+  /* Магента, читаемая ЛЮБОЙ текстовой темой Telegram, а не только тёмной:
+     чистый --magenta даёт ~3.4:1 на светлом tg-surface (ниже WCAG AA 4.5:1
+     для обычного текста — найдено визуальной сверкой при реализации этого
+     спринта). Замешиваю в --tg-text — тот гарантированно контрастен своей
+     теме (это забота Telegram, не наша), поэтому смесь контрастна в любой
+     теме автоматически, без ветвления по prefers-color-scheme (Telegram-тема
+     и тема ОС — разные вещи, полагаться на вторую как на признак первой
+     нельзя). Только для текста цены поверх --tg-surface/--tg-bg; бейджи и
+     CTA на собственной заливке --magenta (белый текст на ней) это не
+     затрагивает — там контраст самодостаточен и не зависит от темы клиента. */
+  --magenta-on-theme: color-mix(in srgb, var(--magenta) 65%, var(--tg-text) 35%);
+
+  /* Флюидная сетка каталога (см.
+     STACK.md#сетка-каталога--кросс-платформенная-вёрстка): --card-min
+     держит минимум 2 колонки на 320px, --catalog-max-width — верхнюю
+     границу плотности на широком десктопном Telegram-клиенте. Оба
+     значения подобраны Playwright-сверкой на сетке вьюпортов
+     320-1920px, не на глаз. */
+  --card-min: 136px;
+  --catalog-max-width: 900px;
 }
 
 @theme inline {
@@ -50,6 +87,19 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-void: var(--void);
+  --color-void-2: var(--void-2);
+  --color-void-3: var(--void-3);
+  --color-chrome: var(--chrome);
+  --color-chrome-light: var(--chrome-light);
+  --color-chrome-dark: var(--chrome-dark);
+  --color-magenta: var(--magenta);
+  --color-magenta-deep: var(--magenta-deep);
+  --color-magenta-on-theme: var(--magenta-on-theme);
+  --color-ice: var(--ice);
+  --color-brand-rule: var(--brand-rule);
+  --font-display: var(--display);
 }
 
 html {
@@ -86,6 +136,31 @@ button:focus-visible {
   background-color: color-mix(in srgb, var(--tg-bg) 72%, transparent);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+/* Y2K-приёмы витрины (см. docs/design/DESIGN_SYSTEM.md#приёмы) — glow
+   только на коммерческих/CTA-элементах, не на инертном тексте, иначе
+   обесценится (правило зафиксировано в чистовике). */
+.y2k-price-glow {
+  text-shadow: 0 0 12px color-mix(in srgb, var(--magenta) 45%, transparent);
+}
+.y2k-cta-glow {
+  box-shadow: 0 0 16px color-mix(in srgb, var(--magenta) 55%, transparent);
+}
+.y2k-heading {
+  font-variation-settings: "wght" 700;
+}
+.y2k-label {
+  font-variation-settings: "wght" 500;
+}
+.y2k-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(184, 196, 208, 0.035) 0px,
+    rgba(184, 196, 208, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {

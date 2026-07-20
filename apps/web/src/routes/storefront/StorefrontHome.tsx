@@ -35,9 +35,9 @@ export function StorefrontHome() {
   }
 
   return (
-    <div className="min-h-dvh bg-tg-bg">
+    <div className="y2k-scanlines min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <h1 className="truncate text-lg font-semibold text-tg-text">
+        <h1 className="y2k-heading font-display truncate text-lg text-tg-text">
           {data.shopName}
         </h1>
         {data.shopDescription && (
@@ -45,15 +45,17 @@ export function StorefrontHome() {
         )}
       </header>
 
-      <main className="space-y-3 p-4 pb-24">
+      <main className="mx-auto max-w-(--catalog-max-width) p-4 pb-24">
         {data.products.length === 0 ? (
           <p className="py-16 text-center text-tg-hint">
             В этом магазине пока нет товаров.
           </p>
         ) : (
-          data.products.map((product) => (
-            <ProductCard key={product.id} product={product} sellerId={data.sellerId} />
-          ))
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(var(--card-min),1fr))] gap-2">
+            {data.products.map((product) => (
+              <ProductCard key={product.id} product={product} sellerId={data.sellerId} />
+            ))}
+          </div>
         )}
       </main>
       <MiniCartBar />

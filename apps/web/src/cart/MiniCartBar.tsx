@@ -19,7 +19,7 @@ export function MiniCartBar() {
       <span className="text-sm font-medium text-tg-text">
         Корзина · {count} {count === 1 ? "товар" : "товара"}
       </span>
-      <span className="font-semibold text-tg-text tabular-nums">
+      <span className="y2k-price-glow font-semibold text-magenta-on-theme tabular-nums">
         {formatPrice(cartTotalKopecks(state))}
       </span>
     </Link>

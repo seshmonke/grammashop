@@ -29,7 +29,7 @@ function VariantRow({
   const inCart = state.items.find((i) => i.variantId === variant.id);
 
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-tg-separator py-3">
+    <div className="flex items-center justify-between gap-3 border-b border-brand-rule py-3">
       <span className={soldOut ? "text-tg-hint" : "text-tg-text"}>
         {variant.name}
       </span>
@@ -39,7 +39,7 @@ function VariantRow({
             <span className="text-xs text-tg-destructive">нет в наличии</span>
           )}
           {discounted && (
-            <span className="rounded-full bg-tg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-tg-destructive">
+            <span className="y2k-cta-glow rounded-full bg-magenta px-1.5 py-0.5 text-xs font-medium text-white">
               -{discountPercent(variant)}%
             </span>
           )}
@@ -48,7 +48,11 @@ function VariantRow({
               {formatPrice(variant.oldPriceKopecks!)}
             </span>
           )}
-          <span className={soldOut ? "text-tg-hint" : "font-medium text-tg-text"}>
+          <span
+            className={
+              soldOut ? "text-tg-hint" : "y2k-price-glow font-medium text-magenta-on-theme"
+            }
+          >
             {formatPrice(variant.priceKopecks)}
           </span>
         </span>
@@ -105,7 +109,7 @@ function VariantRow({
                   },
                 })
               }
-              className="shrink-0 rounded-full bg-tg-accent px-3 py-1.5 text-xs font-medium text-tg-accent-text"
+              className="y2k-cta-glow shrink-0 rounded-full bg-magenta px-3 py-1.5 text-xs font-medium text-white"
             >
               В корзину
             </button>
@@ -122,7 +126,7 @@ export function ProductDetail() {
   const product = data?.products.find((p) => String(p.id) === productId);
 
   return (
-    <div className="min-h-dvh bg-tg-bg">
+    <div className="y2k-scanlines min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <Link to="/" className="text-tg-link">
           ← Назад
@@ -143,11 +147,11 @@ export function ProductDetail() {
                 className="mb-4 aspect-square w-full rounded-2xl bg-tg-bg object-cover"
               />
             ) : (
-              <div className="mb-4 flex aspect-square w-full items-center justify-center rounded-2xl bg-tg-surface text-sm text-tg-hint">
-                Нет фото
+              <div className="mb-4 flex aspect-square w-full items-center justify-center rounded-2xl bg-void-2">
+                <img src="/logo.svg" alt="" className="h-1/4 w-1/4 opacity-35" />
               </div>
             )}
-            <h1 className="text-xl font-semibold text-tg-text">
+            <h1 className="y2k-heading font-display text-xl text-tg-text">
               {product.name}
             </h1>
             {product.description && (
