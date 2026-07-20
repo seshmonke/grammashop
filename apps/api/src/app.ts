@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { setupFastifyErrorHandler } from "@sentry/node";
 import { healthRoutes } from "./routes/health.route.js";
@@ -38,6 +39,11 @@ export function buildApp(): FastifyInstance {
     origin: `http://localhost:${process.env["WEB_PORT"] ?? "5173"}`,
   });
   app.register(jwt, { secret: jwtSecret });
+  // Лимит 8 МБ на файл — режет запрос до того, как он весь окажется в
+  // памяти (см. STACK.md#пайплайн-фото-товара-спринт-16).
+  app.register(multipart, {
+    limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+  });
   // preHandler для доменных роутов: валидный JWT обязателен, иначе 401.
   // Способности берутся из request.user (payload /auth), роль-специфичные
   // проверки — уже в самих роутах.

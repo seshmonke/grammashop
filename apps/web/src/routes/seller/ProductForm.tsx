@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { rublesToKopecks, kopecksToRubles } from "../../lib/money";
@@ -6,15 +6,19 @@ import { diffVariants, type VariantFormRow } from "../../seller/variant-diff";
 import {
   useAddVariant,
   useCreateProduct,
+  useDeleteProductImage,
   useDeleteVariant,
   useSellerProducts,
   useUpdateProduct,
   useUpdateVariant,
+  useUploadProductImage,
 } from "../../seller/useSellerProducts";
 
 // Форма продавцовской админки товаров: одна форма и на создание, и на
-// редактирование карточки (см. STACK.md#роутинг). Фото не заводим — вне
-// скоупа Спринта 11 (пайплайн изображений спроектирован отдельно).
+// редактирование карточки (см. STACK.md#роутинг). Фото — отдельный
+// запрос от остального CRUD (см. STACK.md#пайплайн-фото-товара-спринт-16),
+// поэтому доступно только для уже созданной карточки (isEdit) — для новой
+// сначала нужен id, который выдаёт только успешное создание.
 
 const MAX_VARIANTS = 10;
 
@@ -98,6 +102,11 @@ export function ProductForm() {
   const addVariant = useAddVariant();
   const updateVariant = useUpdateVariant();
   const deleteVariant = useDeleteVariant();
+  const uploadImage = useUploadProductImage();
+  const deleteImage = useDeleteProductImage();
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const saving =
     createProduct.isPending ||
@@ -124,6 +133,34 @@ export function ProductForm() {
   function removeVariantRow(index: number) {
     if (variants.length <= 1) return;
     setVariants((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !existing) return;
+
+    setImageError(null);
+    const localPreview = URL.createObjectURL(file);
+    setImagePreview(localPreview);
+    try {
+      await uploadImage.mutateAsync({ productId: existing.id, file });
+    } catch {
+      setImageError("Не удалось загрузить фото — попробуйте другой файл");
+    } finally {
+      URL.revokeObjectURL(localPreview);
+      setImagePreview(null);
+    }
+  }
+
+  async function handlePhotoDelete() {
+    if (!existing) return;
+    setImageError(null);
+    try {
+      await deleteImage.mutateAsync(existing.id);
+    } catch {
+      setImageError("Не удалось удалить фото — попробуйте ещё раз");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -208,6 +245,64 @@ export function ProductForm() {
               rows={3}
               className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
             />
+          </div>
+
+          <div>
+            <span className="mb-1 block text-sm text-tg-hint">Фото</span>
+            {!existing ? (
+              <p className="text-sm text-tg-hint">
+                Фото можно добавить после сохранения карточки.
+              </p>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-tg-separator bg-tg-surface">
+                  {imagePreview || existing.image ? (
+                    <img
+                      src={imagePreview ?? existing.image!.thumbnailUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-tg-hint">Нет фото</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handlePhotoSelected}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadImage.isPending}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploadImage.isPending
+                      ? "Загрузка…"
+                      : existing.image
+                        ? "Заменить фото"
+                        : "Загрузить фото"}
+                  </Button>
+                  {existing.image && (
+                    <button
+                      type="button"
+                      onClick={handlePhotoDelete}
+                      disabled={deleteImage.isPending}
+                      className="text-left text-sm text-tg-destructive disabled:opacity-40"
+                    >
+                      Удалить фото
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {imageError && (
+              <p className="mt-1 text-sm text-tg-destructive">{imageError}</p>
+            )}
           </div>
 
           <div>

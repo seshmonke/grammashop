@@ -136,6 +136,17 @@ export function ProductDetail() {
           <p className="py-16 text-center text-tg-hint">Товар не найден.</p>
         ) : (
           <>
+            {product.image ? (
+              <img
+                src={product.image.url}
+                alt=""
+                className="mb-4 aspect-square w-full rounded-2xl bg-tg-bg object-cover"
+              />
+            ) : (
+              <div className="mb-4 flex aspect-square w-full items-center justify-center rounded-2xl bg-tg-surface text-sm text-tg-hint">
+                Нет фото
+              </div>
+            )}
             <h1 className="text-xl font-semibold text-tg-text">
               {product.name}
             </h1>

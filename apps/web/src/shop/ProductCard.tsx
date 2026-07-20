@@ -5,10 +5,11 @@ import { isProductSoldOut, minPriceKopecks, priceVaries } from "./pricing";
 import { useCart } from "../cart/cart-context";
 
 // Плоская карточка товара (без стекла — см. STACK.md#дизайн-направление).
-// Фото товаров — отдельная задача (пайплайн изображений), пока карточка
-// текстовая. Клик ведёт в карточку товара с вариантами; кнопка «В корзину»
-// показывается только у товара с единственным вариантом — с несколькими
-// вариантами выбор всё равно требует перехода на карточку.
+// Thumbnail слева (см. STACK.md#пайплайн-фото-товара-спринт-16), плейсхолдер
+// на текущих токенах для карточек без фото. Клик ведёт в карточку товара с
+// вариантами; кнопка «В корзину» показывается только у товара с
+// единственным вариантом — с несколькими вариантами выбор всё равно
+// требует перехода на карточку.
 export function ProductCard({
   product,
   sellerId,
@@ -27,59 +28,77 @@ export function ProductCard({
   return (
     <Link
       to={`/product/${product.id}`}
-      className="block rounded-2xl bg-tg-surface p-4 transition-transform active:scale-[0.99]"
+      className="flex gap-3 rounded-2xl bg-tg-surface p-4 transition-transform active:scale-[0.99]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="min-w-0 flex-1 font-medium text-tg-text">
-          {product.name}
-        </h3>
-        {soldOut && (
-          <span className="shrink-0 rounded-full bg-tg-bg px-2 py-0.5 text-xs text-tg-hint">
-            Нет в наличии
-          </span>
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-tg-bg">
+        {product.image ? (
+          <img
+            src={product.image.thumbnailUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-center text-[10px] text-tg-hint">
+            Нет фото
+          </div>
         )}
       </div>
 
-      {product.description && (
-        <p className="mt-1 line-clamp-2 text-sm text-tg-hint">
-          {product.description}
-        </p>
-      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 flex-1 font-medium text-tg-text">
+            {product.name}
+          </h3>
+          {soldOut && (
+            <span className="shrink-0 rounded-full bg-tg-bg px-2 py-0.5 text-xs text-tg-hint">
+              Нет в наличии
+            </span>
+          )}
+        </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        {from != null && (
-          <p className="font-semibold text-tg-text tabular-nums">
-            {priceVaries(product.variants) && (
-              <span className="mr-1 text-sm font-normal text-tg-hint">от</span>
-            )}
-            {formatPrice(from)}
+        {product.description && (
+          <p className="mt-1 line-clamp-2 text-sm text-tg-hint">
+            {product.description}
           </p>
         )}
 
-        {onlyVariant && !soldOut && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              dispatch({
-                type: "add",
-                item: {
-                  sellerId,
-                  productId: product.id,
-                  variantId: onlyVariant.id,
-                  productName: product.name,
-                  variantName: onlyVariant.name,
-                  priceKopecks: onlyVariant.priceKopecks,
-                  stock: onlyVariant.stock,
-                },
-              });
-            }}
-            className="shrink-0 rounded-full bg-tg-accent px-3 py-1.5 text-xs font-medium text-tg-accent-text"
-          >
-            {inCart ? `В корзине: ${inCart.quantity}` : "В корзину"}
-          </button>
-        )}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          {from != null && (
+            <p className="font-semibold text-tg-text tabular-nums">
+              {priceVaries(product.variants) && (
+                <span className="mr-1 text-sm font-normal text-tg-hint">
+                  от
+                </span>
+              )}
+              {formatPrice(from)}
+            </p>
+          )}
+
+          {onlyVariant && !soldOut && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dispatch({
+                  type: "add",
+                  item: {
+                    sellerId,
+                    productId: product.id,
+                    variantId: onlyVariant.id,
+                    productName: product.name,
+                    variantName: onlyVariant.name,
+                    priceKopecks: onlyVariant.priceKopecks,
+                    stock: onlyVariant.stock,
+                  },
+                });
+              }}
+              className="shrink-0 rounded-full bg-tg-accent px-3 py-1.5 text-xs font-medium text-tg-accent-text"
+            >
+              {inCart ? `В корзине: ${inCart.quantity}` : "В корзину"}
+            </button>
+          )}
+        </div>
       </div>
     </Link>
   );

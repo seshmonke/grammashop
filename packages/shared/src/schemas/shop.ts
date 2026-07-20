@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { productImageSchema } from "./products.js";
 
 // Контракт публичной витрины (GET /shop/:sellerId). Только то, что видит
 // покупатель: витрина продавца и его активные товары. ПДн продавца
@@ -22,6 +23,7 @@ export const shopProductSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   variants: z.array(shopVariantSchema),
+  image: productImageSchema.nullable(),
 });
 export type ShopProduct = z.infer<typeof shopProductSchema>;
 

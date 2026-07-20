@@ -6,8 +6,16 @@ import type {
   SellerProduct,
   UpdateProductRequest,
 } from "@grammashop/shared";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../db/client.js";
 import { products, productVariants } from "../db/schema.js";
+import {
+  findProductImageRow,
+  loadProductImage,
+  loadProductImages,
+} from "../images/product-image-lookup.js";
+import { thumbnailKeyFor } from "../images/storage-keys.js";
+import { s3Bucket, s3Client } from "../s3/client.js";
 
 // Продавцовская админка товаров (CRUD, см. STACK.md#роутинг). Лимиты
 // тарифа считаются здесь, не в БД-констрейнтах (ревью, задача Спринта 11):
@@ -25,12 +33,14 @@ function toSellerProduct(
     oldPriceKopecks: number | null;
     stock: number | null;
   }>,
+  image: SellerProduct["image"],
 ): SellerProduct {
   return {
     id: product.id,
     name: product.name,
     description: product.description,
     variants,
+    image,
   };
 }
 
@@ -57,15 +67,19 @@ export async function listSellerProducts(
     .where(eq(products.sellerId, sellerId))
     .orderBy(asc(products.sortPosition), asc(products.id));
 
+  const images = await loadProductImages(own.map((p) => p.id));
+
   return Promise.all(
-    own.map(async (p) => toSellerProduct(p, await loadVariants(p.id))),
+    own.map(async (p) =>
+      toSellerProduct(p, await loadVariants(p.id), images.get(p.id) ?? null),
+    ),
   );
 }
 
 // null — карточка не найдена или принадлежит другому продавцу; ownership
 // всегда проверяется через sellerId, не только через id, чтобы один запрос
 // не давал утечки существования чужих карточек по таймингу/поведению.
-async function findOwnedProduct(sellerId: number, productId: number) {
+export async function findOwnedProduct(sellerId: number, productId: number) {
   const [product] = await db
     .select({ id: products.id, name: products.name, description: products.description })
     .from(products)
@@ -114,7 +128,12 @@ export async function createProduct(
       stock: productVariants.stock,
     });
 
-  return { ok: true, product: toSellerProduct(product!, insertedVariants) };
+  // Новая карточка ещё не может иметь фото — загрузка фото отдельным
+  // запросом после создания (см. STACK.md#пайплайн-фото-товара-спринт-16).
+  return {
+    ok: true,
+    product: toSellerProduct(product!, insertedVariants, null),
+  };
 }
 
 export async function updateProduct(
@@ -136,7 +155,11 @@ export async function updateProduct(
     .where(eq(products.id, productId))
     .returning({ id: products.id, name: products.name, description: products.description });
 
-  return toSellerProduct(updated!, await loadVariants(productId));
+  return toSellerProduct(
+    updated!,
+    await loadVariants(productId),
+    await loadProductImage(productId),
+  );
 }
 
 // false — карточка не найдена/чужая. Варианты удаляются каскадом на
@@ -148,6 +171,23 @@ export async function deleteProduct(
 ): Promise<boolean> {
   const owned = await findOwnedProduct(sellerId, productId);
   if (!owned) return false;
+
+  // Строка product_images удалится каскадом на уровне FK, но объекты в S3
+  // каскад не тронет — иначе фото продолжали бы занимать бакет после
+  // удаления карточки.
+  const image = await findProductImageRow(productId);
+  if (image) {
+    await Promise.all([
+      s3Client.send(new DeleteObjectCommand({ Bucket: s3Bucket, Key: image.s3Key })),
+      s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: s3Bucket,
+          Key: thumbnailKeyFor(image.s3Key),
+        }),
+      ),
+    ]);
+  }
+
   await db.delete(products).where(eq(products.id, productId));
   return true;
 }

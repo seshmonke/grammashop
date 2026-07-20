@@ -29,13 +29,30 @@ export const sellerProductVariantSchema = z.object({
 });
 export type SellerProductVariant = z.infer<typeof sellerProductVariantSchema>;
 
+// Одна фото-ссылка на карточку (не галерея, см.
+// STACK.md#пайплайн-фото-товара-спринт-16) — presigned GET-ссылки, TTL 1
+// час, генерируются на каждый ответ заново.
+export const productImageSchema = z.object({
+  url: z.string(),
+  thumbnailUrl: z.string(),
+});
+export type ProductImage = z.infer<typeof productImageSchema>;
+
 export const sellerProductSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string().nullable(),
   variants: z.array(sellerProductVariantSchema),
+  image: productImageSchema.nullable(),
 });
 export type SellerProduct = z.infer<typeof sellerProductSchema>;
+
+export const productImageUploadResponseSchema = z.object({
+  image: productImageSchema,
+});
+export type ProductImageUploadResponse = z.infer<
+  typeof productImageUploadResponseSchema
+>;
 
 export const sellerProductListResponseSchema = z.object({
   products: z.array(sellerProductSchema),

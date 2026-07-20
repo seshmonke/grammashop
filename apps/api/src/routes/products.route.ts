@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   createProductRequestSchema,
+  productImageUploadResponseSchema,
   productVariantInputSchema,
   productVariantUpdateSchema,
   sellerProductListResponseSchema,
@@ -17,6 +18,10 @@ import {
   updateProduct,
   updateVariant,
 } from "../services/products.service.js";
+import {
+  deleteProductImage,
+  setProductImage,
+} from "../services/product-images.service.js";
 
 // /seller/products — продавцовская админка товаров (CRUD, см.
 // STACK.md#роутинг). В отличие от /shop/:sellerId, здесь мало валидного
@@ -94,6 +99,65 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
     const deleted = await deleteProduct(sellerId, productId);
     if (!deleted) {
       return reply.code(404).send({ error: "карточка не найдена" });
+    }
+
+    return reply.code(204).send();
+  });
+
+  fastify.post("/seller/products/:id/image", async (request, reply) => {
+    const sellerId = await requireSellerId(request, reply);
+    if (sellerId === null) return;
+
+    const { id: raw } = request.params as { id: string };
+    const productId = parseIdParam(raw);
+    if (productId === null) {
+      return reply.code(400).send({ error: "id должен быть числом" });
+    }
+
+    let file;
+    try {
+      file = await request.file();
+    } catch {
+      return reply.code(400).send({ error: "файл слишком большой (максимум 8 МБ)" });
+    }
+    if (!file) {
+      return reply.code(400).send({ error: "файл не передан" });
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = await file.toBuffer();
+    } catch {
+      return reply.code(400).send({ error: "файл слишком большой (максимум 8 МБ)" });
+    }
+
+    const result = await setProductImage(sellerId, productId, {
+      buffer,
+      mimetype: file.mimetype,
+    });
+    if (!result.ok) {
+      if (result.reason === "not_found") {
+        return reply.code(404).send({ error: "карточка не найдена" });
+      }
+      return reply.code(400).send({ error: "некорректный файл изображения" });
+    }
+
+    return productImageUploadResponseSchema.parse({ image: result.image });
+  });
+
+  fastify.delete("/seller/products/:id/image", async (request, reply) => {
+    const sellerId = await requireSellerId(request, reply);
+    if (sellerId === null) return;
+
+    const { id: raw } = request.params as { id: string };
+    const productId = parseIdParam(raw);
+    if (productId === null) {
+      return reply.code(400).send({ error: "id должен быть числом" });
+    }
+
+    const result = await deleteProductImage(sellerId, productId);
+    if (!result.ok) {
+      return reply.code(404).send({ error: "фото не найдено" });
     }
 
     return reply.code(204).send();

@@ -2,6 +2,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import type { ShopCatalogResponse, ShopProduct } from "@grammashop/shared";
 import { db } from "../db/client.js";
 import { products, productVariants, sellers } from "../db/schema.js";
+import { loadProductImages } from "../images/product-image-lookup.js";
 
 // Каталог витрины по внутреннему seller.id (см. STACK.md#пайплайн-запроса).
 // null — витрины нет: продавец не найден или заблокирован (blocked = скрытие
@@ -62,6 +63,8 @@ export async function getShopCatalog(
     variantsByProduct.set(v.productId, list);
   }
 
+  const images = await loadProductImages(productIds);
+
   return {
     sellerId: seller.id,
     shopName: seller.shopName,
@@ -72,6 +75,7 @@ export async function getShopCatalog(
       name: p.name,
       description: p.description,
       variants: variantsByProduct.get(p.id) ?? [],
+      image: images.get(p.id) ?? null,
     })),
   };
 }

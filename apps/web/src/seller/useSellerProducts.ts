@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  productImageUploadResponseSchema,
   sellerProductListResponseSchema,
   sellerProductSchema,
   type CreateProductRequest,
@@ -112,6 +113,38 @@ export function useDeleteVariant() {
       await apiClient.delete(
         `/seller/products/${args.productId}/variants/${args.variantId}`,
       );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+  });
+}
+
+// Загрузка фото — отдельный запрос от остального CRUD карточки: файл идёт
+// multipart, не JSON-телом (см. STACK.md#пайплайн-фото-товара-спринт-16).
+export function useUploadProductImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { productId: number; file: File }) => {
+      const formData = new FormData();
+      formData.append("file", args.file);
+      const { data } = await apiClient.post(
+        `/seller/products/${args.productId}/image`,
+        formData,
+      );
+      return productImageUploadResponseSchema.parse(data).image;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+  });
+}
+
+export function useDeleteProductImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (productId: number) => {
+      await apiClient.delete(`/seller/products/${productId}/image`);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
