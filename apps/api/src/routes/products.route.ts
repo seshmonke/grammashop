@@ -264,17 +264,22 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.code(400).send({ error: "некорректные данные варианта" });
       }
 
-      const updated = await updateVariant(
+      const result = await updateVariant(
         sellerId,
         productId,
         variantId,
         parsed.data,
       );
-      if (!updated) {
+      if (!result.ok) {
+        if (result.reason === "invalid_price") {
+          return reply.code(400).send({
+            error: "базовая цена не может быть ниже цены со скидкой",
+          });
+        }
         return reply.code(404).send({ error: "вариант не найден" });
       }
 
-      return updated;
+      return result.variant;
     },
   );
 

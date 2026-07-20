@@ -163,6 +163,20 @@ button:focus-visible {
   );
 }
 
+/* Смена слогана на экране-развилке (auth/Fork.tsx) — тот же слоган-лист,
+   что и в hero-карусели лендинга (public/landing.html), другой механизм
+   (React state + fade), не CSS @keyframes: один экран, не строчная лента. */
+@keyframes slogan-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

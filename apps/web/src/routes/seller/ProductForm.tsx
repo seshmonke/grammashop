@@ -189,6 +189,16 @@ export function ProductForm() {
       return;
     }
     const validVariants = parsedVariants as VariantFormRow[];
+    // Базовая цена — это цена «до скидки», она не может быть ниже цены со
+    // скидкой: иначе получается не скидка, а надбавка (см. TASKS.md).
+    if (
+      validVariants.some(
+        (v) => v.oldPriceKopecks != null && v.oldPriceKopecks < v.priceKopecks,
+      )
+    ) {
+      setError("Базовая цена не может быть ниже цены со скидкой");
+      return;
+    }
 
     try {
       if (!isEdit) {
@@ -373,7 +383,7 @@ export function ProductForm() {
                     className="col-span-2 rounded-md border border-tg-separator bg-tg-surface px-2 py-1.5 text-sm text-tg-text"
                   />
                   <input
-                    placeholder="Цена, ₽"
+                    placeholder="Цена со скидкой, ₽"
                     inputMode="decimal"
                     value={v.priceRub}
                     onChange={(e) =>
@@ -382,7 +392,7 @@ export function ProductForm() {
                     className="rounded-md border border-tg-separator bg-tg-surface px-2 py-1.5 text-sm text-tg-text"
                   />
                   <input
-                    placeholder="Старая цена, ₽"
+                    placeholder="Базовая цена, ₽ (необязательно)"
                     inputMode="decimal"
                     value={v.oldPriceRub}
                     onChange={(e) =>

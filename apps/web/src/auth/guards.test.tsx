@@ -124,7 +124,7 @@ describe("Landing", () => {
     vi.stubEnv("VITE_DEV_SELLER_ID", "");
     vi.spyOn(telegram, "getStartParam").mockReturnValue(undefined);
     renderLanding(buyer);
-    expect(screen.getByText(/открыть магазин/i)).toBeInTheDocument();
+    expect(screen.getByText(/запустить магазин/i)).toBeInTheDocument();
     expect(screen.getByText(/о платформе/i)).toBeInTheDocument();
   });
 

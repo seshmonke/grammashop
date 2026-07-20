@@ -17,7 +17,7 @@ const REGISTER_START_PARAM = "register";
 // в его админку, CTA лендинга не должен приводить продавца на форму с
 // 409). Без start_param — по роли: продавец в свою админку, админ в
 // платформенную, покупатель без параметра и без роли — на экран-развилку
-// (Fork: «О платформе» / «Открыть магазин»).
+// (Fork: «О платформе» / «Запустить магазин»).
 export function Landing() {
   const session = useSession();
   const startParam = getStartParam();

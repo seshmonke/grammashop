@@ -238,9 +238,39 @@ export async function updateVariant(
   productId: number,
   variantId: number,
   input: ProductVariantUpdate,
-): Promise<SellerProduct["variants"][number] | null> {
+): Promise<
+  | { ok: true; variant: SellerProduct["variants"][number] }
+  | { ok: false; reason: "not_found" | "invalid_price" }
+> {
   const owned = await findOwnedProduct(sellerId, productId);
-  if (!owned) return null;
+  if (!owned) return { ok: false, reason: "not_found" };
+
+  const [current] = await db
+    .select({
+      priceKopecks: productVariants.priceKopecks,
+      oldPriceKopecks: productVariants.oldPriceKopecks,
+    })
+    .from(productVariants)
+    .where(
+      and(
+        eq(productVariants.id, variantId),
+        eq(productVariants.productId, productId),
+      ),
+    );
+  if (!current) return { ok: false, reason: "not_found" };
+
+  // Патч приходит по одному полю за раз (см. seller/variant-diff.ts) — Zod
+  // на схеме ловит только запрос с обоими полями сразу, здесь домерживаем
+  // с текущими значениями в БД, чтобы обновление одного поля не создало
+  // невалидную комбинацию (базовая цена ниже цены со скидкой).
+  const mergedPrice = input.priceKopecks ?? current.priceKopecks;
+  const mergedOldPrice =
+    input.oldPriceKopecks !== undefined
+      ? input.oldPriceKopecks
+      : current.oldPriceKopecks;
+  if (mergedOldPrice != null && mergedOldPrice < mergedPrice) {
+    return { ok: false, reason: "invalid_price" };
+  }
 
   const [variant] = await db
     .update(productVariants)
@@ -268,7 +298,7 @@ export async function updateVariant(
       stock: productVariants.stock,
     });
 
-  return variant ?? null;
+  return { ok: true, variant: variant! };
 }
 
 // Карточка без опций хранится как единственный вариант по умолчанию (см.

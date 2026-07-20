@@ -46,26 +46,29 @@ export function SellerHome() {
 
   return (
     <div className="min-h-dvh bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 flex items-center justify-between border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <div>
+      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <div className="flex items-center justify-between">
           <h1 className="y2k-heading font-display text-lg text-tg-text">Товары</h1>
           {products && (
-            <p className="text-sm text-tg-hint">{products.length} / 30</p>
+            <p className="shrink-0 text-sm text-tg-hint">{products.length} / 30</p>
           )}
         </div>
-        <div className="flex shrink-0 gap-2">
+        {/* overflow-x-auto — кнопок стало 4 (плюс «Платформа» у админа-продавца),
+            в один ряд без прокрутки они не помещаются на узком экране и режутся
+            краем viewport, а не переносятся (flex без wrap). */}
+        <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4">
           {session.isAdmin && (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" className="shrink-0">
               <Link to="/platform">Платформа</Link>
             </Button>
           )}
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="shrink-0">
             <Link to="/seller/profile">Настройки</Link>
           </Button>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="shrink-0">
             <Link to="/seller/orders">Заказы</Link>
           </Button>
-          <Button asChild size="sm" className="bg-magenta text-white hover:bg-magenta/90">
+          <Button asChild size="sm" className="shrink-0 bg-magenta text-white hover:bg-magenta/90">
             <Link to="/seller/products/new">Добавить</Link>
           </Button>
         </div>

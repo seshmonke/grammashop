@@ -69,7 +69,7 @@ export function RegisterForm() {
     <div className="min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <h1 className="y2k-heading font-display text-lg text-tg-text">
-          Открыть магазин
+          Запустить магазин
         </h1>
       </header>
 
@@ -136,7 +136,7 @@ export function RegisterForm() {
             disabled={!canSubmit}
             className="w-full rounded-2xl bg-magenta py-3 text-center font-medium text-white disabled:opacity-40"
           >
-            {registerSeller.isPending ? "Открываем…" : "Открыть магазин"}
+            {registerSeller.isPending ? "Запускаем…" : "Запустить магазин"}
           </button>
         </form>
       </main>

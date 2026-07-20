@@ -5,19 +5,46 @@ import { z } from "zod";
 // 10 вариантов на карточку) проверяются в сервис-слое, не здесь — эта
 // схема только про форму данных запроса/ответа.
 
-export const productVariantInputSchema = z.object({
+// Сообщение общее для обеих схем ниже — база (см. базовая цена) не может
+// быть ниже цены со скидкой, иначе это не скидка, а надбавка (баг, найденный
+// пользователем 21.07.2026: старая цена ниже новой рендерилась на витрине
+// без наценки, но никак не была запрещена на вводе).
+const PRICE_ORDER_MESSAGE = "Базовая цена не может быть ниже цены со скидкой";
+
+const productVariantShape = {
   name: z.string().trim().min(1).max(200),
+  // Цена со скидкой — то, что фактически платит покупатель.
   priceKopecks: z.number().int().positive(),
-  // null/undefined — скидки нет.
+  // Базовая цена («было») — null/undefined, если скидки нет. Показывается
+  // на витрине зачёркнутой рядом с ценой со скидкой.
   oldPriceKopecks: z.number().int().positive().nullable().optional(),
   // null/undefined — учёт остатка выключен (всегда «в наличии»).
   stock: z.number().int().min(0).nullable().optional(),
-});
+};
+
+export const productVariantInputSchema = z
+  .object(productVariantShape)
+  .refine(
+    (v) => v.oldPriceKopecks == null || v.oldPriceKopecks >= v.priceKopecks,
+    { message: PRICE_ORDER_MESSAGE, path: ["oldPriceKopecks"] },
+  );
 export type ProductVariantInput = z.infer<typeof productVariantInputSchema>;
 
 // Частичное обновление варианта — все поля опциональны, но при передаче
-// проходят те же ограничения, что и при создании.
-export const productVariantUpdateSchema = productVariantInputSchema.partial();
+// проходят те же ограничения, что и при создании. Проверка порядка цен
+// здесь ловит только запрос, где оба поля пришли вместе — по одному полю
+// за раз (см. seller/variant-diff.ts на фронте) её домержевает сервис
+// (services/products.service.ts, updateVariant) против текущих значений в БД.
+export const productVariantUpdateSchema = z
+  .object(productVariantShape)
+  .partial()
+  .refine(
+    (v) =>
+      v.oldPriceKopecks == null ||
+      v.priceKopecks == null ||
+      v.oldPriceKopecks >= v.priceKopecks,
+    { message: PRICE_ORDER_MESSAGE, path: ["oldPriceKopecks"] },
+  );
 export type ProductVariantUpdate = z.infer<typeof productVariantUpdateSchema>;
 
 export const sellerProductVariantSchema = z.object({

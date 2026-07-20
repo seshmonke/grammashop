@@ -355,6 +355,87 @@ describe("/seller/products", () => {
       await app.close();
     });
 
+    it("POST: базовая цена ниже цены со скидкой → 400", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const { productId } = await seedProductWithVariant(sellerId);
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(
+        app,
+        "POST",
+        `/seller/products/${productId}/variants`,
+        token,
+        { name: "Со скидкой наоборот", priceKopecks: 2000, oldPriceKopecks: 1500 },
+      );
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
+    it("PATCH: оба поля сразу, базовая цена ниже цены со скидкой → 400", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const { productId, variantId } = await seedProductWithVariant(sellerId);
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/seller/products/${productId}/variants/${variantId}`,
+        token,
+        { priceKopecks: 2000, oldPriceKopecks: 1500 },
+      );
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
+    it("PATCH: поднять цену со скидкой выше уже сохранённой базовой цены → 400", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const { productId, variantId } = await seedProductWithVariant(sellerId);
+      // Текущий вариант: priceKopecks 1000, базовой цены нет — сперва задаём
+      // базовую 1200 отдельным PATCH (валидно: 1200 >= 1000).
+      const token = await tokenFor(app, { sellerId });
+      const withBase = await req(
+        app,
+        "PATCH",
+        `/seller/products/${productId}/variants/${variantId}`,
+        token,
+        { oldPriceKopecks: 1200 },
+      );
+      expect(withBase.statusCode).toBe(200);
+
+      // Теперь поднимаем только цену со скидкой выше сохранённой базовой —
+      // домердж в сервисе должен поймать это по текущему значению из БД.
+      const res = await req(
+        app,
+        "PATCH",
+        `/seller/products/${productId}/variants/${variantId}`,
+        token,
+        { priceKopecks: 1500 },
+      );
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
+    it("PATCH: снизить базовую цену ниже уже сохранённой цены со скидкой → 400", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const { productId, variantId } = await seedProductWithVariant(sellerId);
+      const token = await tokenFor(app, { sellerId });
+      // Текущий вариант: priceKopecks 1000, без базовой — снижаем базовую
+      // до значения ниже 1000 отдельным PATCH.
+      const res = await req(
+        app,
+        "PATCH",
+        `/seller/products/${productId}/variants/${variantId}`,
+        token,
+        { oldPriceKopecks: 500 },
+      );
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
     it("DELETE последнего варианта карточки → 400", async () => {
       const app = buildApp();
       const sellerId = await seedSeller(OWNER_TG, "owner");
