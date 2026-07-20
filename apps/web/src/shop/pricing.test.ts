@@ -22,7 +22,7 @@ const product = (variants: ShopVariant[]): ShopProduct => ({
   name: "P",
   description: null,
   variants,
-  image: null,
+  images: [],
 });
 
 describe("minPriceKopecks", () => {

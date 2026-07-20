@@ -29,10 +29,13 @@ export const sellerProductVariantSchema = z.object({
 });
 export type SellerProductVariant = z.infer<typeof sellerProductVariantSchema>;
 
-// Одна фото-ссылка на карточку (не галерея, см.
-// STACK.md#пайплайн-фото-товара-спринт-16) — presigned GET-ссылки, TTL 1
-// час, генерируются на каждый ответ заново.
+// Галерея фото карточки — до 5 штук, не на вариант (см.
+// STACK.md#пайплайн-фото-товара-спринт-16-расширено-спринтом-20) —
+// presigned GET-ссылки, TTL 1 час, генерируются на каждый ответ заново.
+// `id` — id строки product_images, нужен админке для удаления/reorder
+// конкретного фото по эндпоинту.
 export const productImageSchema = z.object({
+  id: z.number(),
   url: z.string(),
   thumbnailUrl: z.string(),
 });
@@ -43,15 +46,20 @@ export const sellerProductSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   variants: z.array(sellerProductVariantSchema),
-  image: productImageSchema.nullable(),
+  images: z.array(productImageSchema),
 });
 export type SellerProduct = z.infer<typeof sellerProductSchema>;
 
-export const productImageUploadResponseSchema = z.object({
-  image: productImageSchema,
+export const productImagesResponseSchema = z.object({
+  images: z.array(productImageSchema),
 });
-export type ProductImageUploadResponse = z.infer<
-  typeof productImageUploadResponseSchema
+export type ProductImagesResponse = z.infer<typeof productImagesResponseSchema>;
+
+export const productImageMoveRequestSchema = z.object({
+  direction: z.enum(["left", "right"]),
+});
+export type ProductImageMoveRequest = z.infer<
+  typeof productImageMoveRequestSchema
 >;
 
 export const sellerProductListResponseSchema = z.object({

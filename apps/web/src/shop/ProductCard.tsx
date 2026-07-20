@@ -34,6 +34,7 @@ export function ProductCard({
     ? state.items.find((i) => i.variantId === onlyVariant.id)
     : undefined;
   const discounted = onlyVariant != null && hasDiscount(onlyVariant);
+  const coverImage = product.images[0] ?? null;
 
   return (
     <Link
@@ -41,9 +42,9 @@ export function ProductCard({
       className="flex flex-col overflow-hidden rounded-2xl bg-tg-surface transition-transform active:scale-[0.98]"
     >
       <div className="relative aspect-square w-full">
-        {product.image ? (
+        {coverImage ? (
           <img
-            src={product.image.thumbnailUrl}
+            src={coverImage.thumbnailUrl}
             alt=""
             className="h-full w-full object-cover"
           />

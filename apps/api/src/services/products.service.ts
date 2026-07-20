@@ -10,9 +10,9 @@ import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../db/client.js";
 import { products, productVariants } from "../db/schema.js";
 import {
-  findProductImageRow,
-  loadProductImage,
-  loadProductImages,
+  listProductImageRows,
+  loadImagesForProduct,
+  loadImagesForProducts,
 } from "../images/product-image-lookup.js";
 import { thumbnailKeyFor } from "../images/storage-keys.js";
 import { s3Bucket, s3Client } from "../s3/client.js";
@@ -33,14 +33,14 @@ function toSellerProduct(
     oldPriceKopecks: number | null;
     stock: number | null;
   }>,
-  image: SellerProduct["image"],
+  images: SellerProduct["images"],
 ): SellerProduct {
   return {
     id: product.id,
     name: product.name,
     description: product.description,
     variants,
-    image,
+    images,
   };
 }
 
@@ -67,11 +67,11 @@ export async function listSellerProducts(
     .where(eq(products.sellerId, sellerId))
     .orderBy(asc(products.sortPosition), asc(products.id));
 
-  const images = await loadProductImages(own.map((p) => p.id));
+  const images = await loadImagesForProducts(own.map((p) => p.id));
 
   return Promise.all(
     own.map(async (p) =>
-      toSellerProduct(p, await loadVariants(p.id), images.get(p.id) ?? null),
+      toSellerProduct(p, await loadVariants(p.id), images.get(p.id) ?? []),
     ),
   );
 }
@@ -129,10 +129,11 @@ export async function createProduct(
     });
 
   // Новая карточка ещё не может иметь фото — загрузка фото отдельным
-  // запросом после создания (см. STACK.md#пайплайн-фото-товара-спринт-16).
+  // запросом после создания (см.
+  // STACK.md#пайплайн-фото-товара-спринт-16-расширено-спринтом-20).
   return {
     ok: true,
-    product: toSellerProduct(product!, insertedVariants, null),
+    product: toSellerProduct(product!, insertedVariants, []),
   };
 }
 
@@ -158,7 +159,7 @@ export async function updateProduct(
   return toSellerProduct(
     updated!,
     await loadVariants(productId),
-    await loadProductImage(productId),
+    await loadImagesForProduct(productId),
   );
 }
 
@@ -172,12 +173,12 @@ export async function deleteProduct(
   const owned = await findOwnedProduct(sellerId, productId);
   if (!owned) return false;
 
-  // Строка product_images удалится каскадом на уровне FK, но объекты в S3
+  // Строки product_images удалятся каскадом на уровне FK, но объекты в S3
   // каскад не тронет — иначе фото продолжали бы занимать бакет после
-  // удаления карточки.
-  const image = await findProductImageRow(productId);
-  if (image) {
-    await Promise.all([
+  // удаления карточки. До 5 строк на карточку — без пагинации.
+  const images = await listProductImageRows(productId);
+  await Promise.all(
+    images.flatMap((image) => [
       s3Client.send(new DeleteObjectCommand({ Bucket: s3Bucket, Key: image.s3Key })),
       s3Client.send(
         new DeleteObjectCommand({
@@ -185,8 +186,8 @@ export async function deleteProduct(
           Key: thumbnailKeyFor(image.s3Key),
         }),
       ),
-    ]);
-  }
+    ]),
+  );
 
   await db.delete(products).where(eq(products.id, productId));
   return true;

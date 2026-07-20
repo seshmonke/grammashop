@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import {
   createProductRequestSchema,
-  productImageUploadResponseSchema,
+  productImageMoveRequestSchema,
+  productImagesResponseSchema,
   productImportResponseSchema,
   productVariantInputSchema,
   productVariantUpdateSchema,
@@ -20,8 +21,9 @@ import {
   updateVariant,
 } from "../services/products.service.js";
 import {
+  addProductImage,
   deleteProductImage,
-  setProductImage,
+  moveProductImage,
 } from "../services/product-images.service.js";
 import { importProducts } from "../services/products-import.service.js";
 
@@ -109,7 +111,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
     return reply.code(204).send();
   });
 
-  fastify.post("/seller/products/:id/image", async (request, reply) => {
+  fastify.post("/seller/products/:id/images", async (request, reply) => {
     const sellerId = await requireSellerId(request, reply);
     if (sellerId === null) return;
 
@@ -136,7 +138,7 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "файл слишком большой (максимум 8 МБ)" });
     }
 
-    const result = await setProductImage(sellerId, productId, {
+    const result = await addProductImage(sellerId, productId, {
       buffer,
       mimetype: file.mimetype,
     });
@@ -144,29 +146,74 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
       if (result.reason === "not_found") {
         return reply.code(404).send({ error: "карточка не найдена" });
       }
+      if (result.reason === "image_limit") {
+        return reply.code(400).send({ error: "лимит фото на карточку исчерпан (5)" });
+      }
       return reply.code(400).send({ error: "некорректный файл изображения" });
     }
 
-    return productImageUploadResponseSchema.parse({ image: result.image });
+    return productImagesResponseSchema.parse({ images: result.images });
   });
 
-  fastify.delete("/seller/products/:id/image", async (request, reply) => {
-    const sellerId = await requireSellerId(request, reply);
-    if (sellerId === null) return;
+  fastify.delete(
+    "/seller/products/:id/images/:imageId",
+    async (request, reply) => {
+      const sellerId = await requireSellerId(request, reply);
+      if (sellerId === null) return;
 
-    const { id: raw } = request.params as { id: string };
-    const productId = parseIdParam(raw);
-    if (productId === null) {
-      return reply.code(400).send({ error: "id должен быть числом" });
-    }
+      const { id: rawId, imageId: rawImageId } = request.params as {
+        id: string;
+        imageId: string;
+      };
+      const productId = parseIdParam(rawId);
+      const imageId = parseIdParam(rawImageId);
+      if (productId === null || imageId === null) {
+        return reply.code(400).send({ error: "id должен быть числом" });
+      }
 
-    const result = await deleteProductImage(sellerId, productId);
-    if (!result.ok) {
-      return reply.code(404).send({ error: "фото не найдено" });
-    }
+      const result = await deleteProductImage(sellerId, productId, imageId);
+      if (!result.ok) {
+        return reply.code(404).send({ error: "фото не найдено" });
+      }
 
-    return reply.code(204).send();
-  });
+      return reply.code(204).send();
+    },
+  );
+
+  fastify.patch(
+    "/seller/products/:id/images/:imageId/move",
+    async (request, reply) => {
+      const sellerId = await requireSellerId(request, reply);
+      if (sellerId === null) return;
+
+      const { id: rawId, imageId: rawImageId } = request.params as {
+        id: string;
+        imageId: string;
+      };
+      const productId = parseIdParam(rawId);
+      const imageId = parseIdParam(rawImageId);
+      if (productId === null || imageId === null) {
+        return reply.code(400).send({ error: "id должен быть числом" });
+      }
+
+      const parsed = productImageMoveRequestSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: "некорректное направление" });
+      }
+
+      const result = await moveProductImage(
+        sellerId,
+        productId,
+        imageId,
+        parsed.data.direction,
+      );
+      if (!result.ok) {
+        return reply.code(404).send({ error: "фото не найдено" });
+      }
+
+      return productImagesResponseSchema.parse({ images: result.images });
+    },
+  );
 
   fastify.post("/seller/products/:id/variants", async (request, reply) => {
     const sellerId = await requireSellerId(request, reply);

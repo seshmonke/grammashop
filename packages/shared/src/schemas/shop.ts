@@ -23,7 +23,7 @@ export const shopProductSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   variants: z.array(shopVariantSchema),
-  image: productImageSchema.nullable(),
+  images: z.array(productImageSchema),
 });
 export type ShopProduct = z.infer<typeof shopProductSchema>;
 

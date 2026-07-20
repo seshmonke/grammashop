@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  productImageUploadResponseSchema,
+  productImagesResponseSchema,
   productImportResponseSchema,
   sellerProductListResponseSchema,
   sellerProductSchema,
@@ -122,19 +122,41 @@ export function useDeleteVariant() {
   });
 }
 
-// Загрузка фото — отдельный запрос от остального CRUD карточки: файл идёт
-// multipart, не JSON-телом (см. STACK.md#пайплайн-фото-товара-спринт-16).
-export function useUploadProductImage() {
+// Галерея фото — отдельные запросы от остального CRUD карточки: файл идёт
+// multipart, не JSON-телом (см.
+// STACK.md#пайплайн-фото-товара-спринт-16-расширено-спринтом-20). До 5
+// фото на карточку, добавление не заменяет прежние.
+export function useAddProductImage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (args: { productId: number; file: File }) => {
       const formData = new FormData();
       formData.append("file", args.file);
       const { data } = await apiClient.post(
-        `/seller/products/${args.productId}/image`,
+        `/seller/products/${args.productId}/images`,
         formData,
       );
-      return productImageUploadResponseSchema.parse(data).image;
+      return productImagesResponseSchema.parse(data).images;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+  });
+}
+
+export function useMoveProductImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      productId: number;
+      imageId: number;
+      direction: "left" | "right";
+    }) => {
+      const { data } = await apiClient.patch(
+        `/seller/products/${args.productId}/images/${args.imageId}/move`,
+        { direction: args.direction },
+      );
+      return productImagesResponseSchema.parse(data).images;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
@@ -164,8 +186,10 @@ export function useImportProducts() {
 export function useDeleteProductImage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (productId: number) => {
-      await apiClient.delete(`/seller/products/${productId}/image`);
+    mutationFn: async (args: { productId: number; imageId: number }) => {
+      await apiClient.delete(
+        `/seller/products/${args.productId}/images/${args.imageId}`,
+      );
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });

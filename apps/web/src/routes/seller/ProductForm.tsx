@@ -4,23 +4,26 @@ import { Button } from "@/components/ui/button";
 import { rublesToKopecks, kopecksToRubles } from "../../lib/money";
 import { diffVariants, type VariantFormRow } from "../../seller/variant-diff";
 import {
+  useAddProductImage,
   useAddVariant,
   useCreateProduct,
   useDeleteProductImage,
   useDeleteVariant,
+  useMoveProductImage,
   useSellerProducts,
   useUpdateProduct,
   useUpdateVariant,
-  useUploadProductImage,
 } from "../../seller/useSellerProducts";
 
 // Форма продавцовской админки товаров: одна форма и на создание, и на
-// редактирование карточки (см. STACK.md#роутинг). Фото — отдельный
-// запрос от остального CRUD (см. STACK.md#пайплайн-фото-товара-спринт-16),
-// поэтому доступно только для уже созданной карточки (isEdit) — для новой
+// редактирование карточки (см. STACK.md#роутинг). Фото — отдельные запросы
+// от остального CRUD (см.
+// STACK.md#пайплайн-фото-товара-спринт-16-расширено-спринтом-20), поэтому
+// галерея доступна только для уже созданной карточки (isEdit) — для новой
 // сначала нужен id, который выдаёт только успешное создание.
 
 const MAX_VARIANTS = 10;
+const MAX_IMAGES = 5;
 
 type DraftVariant = {
   id?: number;
@@ -102,10 +105,11 @@ export function ProductForm() {
   const addVariant = useAddVariant();
   const updateVariant = useUpdateVariant();
   const deleteVariant = useDeleteVariant();
-  const uploadImage = useUploadProductImage();
+  const addImage = useAddProductImage();
   const deleteImage = useDeleteProductImage();
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const moveImage = useMoveProductImage();
   const [imageError, setImageError] = useState<string | null>(null);
+  const [movingImageId, setMovingImageId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const saving =
@@ -141,25 +145,33 @@ export function ProductForm() {
     if (!file || !existing) return;
 
     setImageError(null);
-    const localPreview = URL.createObjectURL(file);
-    setImagePreview(localPreview);
     try {
-      await uploadImage.mutateAsync({ productId: existing.id, file });
+      await addImage.mutateAsync({ productId: existing.id, file });
     } catch {
       setImageError("Не удалось загрузить фото — попробуйте другой файл");
-    } finally {
-      URL.revokeObjectURL(localPreview);
-      setImagePreview(null);
     }
   }
 
-  async function handlePhotoDelete() {
+  async function handlePhotoDelete(imageId: number) {
     if (!existing) return;
     setImageError(null);
     try {
-      await deleteImage.mutateAsync(existing.id);
+      await deleteImage.mutateAsync({ productId: existing.id, imageId });
     } catch {
       setImageError("Не удалось удалить фото — попробуйте ещё раз");
+    }
+  }
+
+  async function handlePhotoMove(imageId: number, direction: "left" | "right") {
+    if (!existing) return;
+    setImageError(null);
+    setMovingImageId(imageId);
+    try {
+      await moveImage.mutateAsync({ productId: existing.id, imageId, direction });
+    } catch {
+      setImageError("Не удалось переставить фото — попробуйте ещё раз");
+    } finally {
+      setMovingImageId(null);
     }
   }
 
@@ -248,56 +260,81 @@ export function ProductForm() {
           </div>
 
           <div>
-            <span className="mb-1 block text-sm text-tg-hint">Фото</span>
+            <span className="mb-1 block text-sm text-tg-hint">
+              Фото ({existing ? existing.images.length : 0}/{MAX_IMAGES})
+            </span>
             {!existing ? (
               <p className="text-sm text-tg-hint">
                 Фото можно добавить после сохранения карточки.
               </p>
             ) : (
-              <div className="flex items-center gap-3">
-                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-tg-separator bg-tg-surface">
-                  {imagePreview || existing.image ? (
-                    <img
-                      src={imagePreview ?? existing.image!.thumbnailUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-xs text-tg-hint">Нет фото</span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={handlePhotoSelected}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadImage.isPending}
-                    onClick={() => fileInputRef.current?.click()}
+              <div className="flex flex-wrap gap-3">
+                {existing.images.map((image, i) => (
+                  <div
+                    key={image.id}
+                    className="flex w-20 flex-col items-center gap-1"
                   >
-                    {uploadImage.isPending
-                      ? "Загрузка…"
-                      : existing.image
-                        ? "Заменить фото"
-                        : "Загрузить фото"}
-                  </Button>
-                  {existing.image && (
-                    <button
+                    <div className="h-20 w-20 overflow-hidden rounded-lg border border-tg-separator bg-tg-surface">
+                      <img
+                        src={image.thumbnailUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label="Сдвинуть влево"
+                        disabled={i === 0 || movingImageId != null}
+                        onClick={() => handlePhotoMove(image.id, "left")}
+                        className="text-sm text-tg-text disabled:opacity-30"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Удалить фото"
+                        disabled={deleteImage.isPending}
+                        onClick={() => handlePhotoDelete(image.id)}
+                        className="text-sm text-tg-destructive disabled:opacity-40"
+                      >
+                        ✕
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Сдвинуть вправо"
+                        disabled={
+                          i === existing.images.length - 1 || movingImageId != null
+                        }
+                        onClick={() => handlePhotoMove(image.id, "right")}
+                        className="text-sm text-tg-text disabled:opacity-30"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {existing.images.length < MAX_IMAGES && (
+                  <div className="flex h-20 w-20 items-center justify-center">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handlePhotoSelected}
+                    />
+                    <Button
                       type="button"
-                      onClick={handlePhotoDelete}
-                      disabled={deleteImage.isPending}
-                      className="text-left text-sm text-tg-destructive disabled:opacity-40"
+                      variant="outline"
+                      size="sm"
+                      disabled={addImage.isPending}
+                      onClick={() => fileInputRef.current?.click()}
                     >
-                      Удалить фото
-                    </button>
-                  )}
-                </div>
+                      {addImage.isPending ? "…" : "+ Фото"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
             {imageError && (
