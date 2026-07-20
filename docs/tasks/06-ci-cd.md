@@ -2,7 +2,7 @@
 
 Задачи идут в порядке зависимости. Реестр — GitHub Container Registry
 (ghcr.io), SSH-деплой на VM сознательно вынесен из скоупа спринта — VM
-(веха 7) ещё не существует, см. [STACK.md#ci-cd](STACK.md#ci-cd).
+(веха 7) ещё не существует, см. [STACK.md#ci-cd](../STACK.md#ci-cd).
 
 - [x] ~~GitHub Actions workflow: job тестов — `postgres` как
   service-контейнер (аналог `docker-compose`), миграции, `pnpm -r test`
