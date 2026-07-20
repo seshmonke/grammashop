@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import {
   createProductRequestSchema,
   productImageUploadResponseSchema,
+  productImportResponseSchema,
   productVariantInputSchema,
   productVariantUpdateSchema,
   sellerProductListResponseSchema,
@@ -22,6 +23,10 @@ import {
   deleteProductImage,
   setProductImage,
 } from "../services/product-images.service.js";
+import { importProducts } from "../services/products-import.service.js";
+
+const XLSX_MIME_TYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 // /seller/products — продавцовская админка товаров (CRUD, см.
 // STACK.md#роутинг). В отличие от /shop/:sellerId, здесь мало валидного
@@ -225,6 +230,40 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
       return updated;
     },
   );
+
+  fastify.post("/seller/products/import", async (request, reply) => {
+    const sellerId = await requireSellerId(request, reply);
+    if (sellerId === null) return;
+
+    let file;
+    try {
+      file = await request.file();
+    } catch {
+      return reply.code(400).send({ error: "файл слишком большой (максимум 8 МБ)" });
+    }
+    if (!file) {
+      return reply.code(400).send({ error: "файл не передан" });
+    }
+    if (file.mimetype !== XLSX_MIME_TYPE) {
+      return reply.code(400).send({ error: "поддерживается только .xlsx" });
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = await file.toBuffer();
+    } catch {
+      return reply.code(400).send({ error: "файл слишком большой (максимум 8 МБ)" });
+    }
+
+    let result;
+    try {
+      result = await importProducts(sellerId, buffer);
+    } catch {
+      return reply.code(400).send({ error: "не удалось разобрать файл — проверьте, что это .xlsx по шаблону" });
+    }
+
+    return productImportResponseSchema.parse(result);
+  });
 
   fastify.delete(
     "/seller/products/:id/variants/:variantId",

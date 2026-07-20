@@ -76,3 +76,19 @@ export const updateProductRequestSchema = z.object({
   description: z.string().trim().max(2000).nullable().optional(),
 });
 export type UpdateProductRequest = z.infer<typeof updateProductRequestSchema>;
+
+// Пакетная заливка каталога через Excel-шаблон (см.
+// STACK.md#пакетная-заливка-каталога-спринт-18) — партиальный импорт:
+// валидные карточки создаются, невалидные строки идут построчным
+// отчётом, не блокируют файл целиком.
+export const productImportRowErrorSchema = z.object({
+  row: z.number().int(),
+  error: z.string(),
+});
+export type ProductImportRowError = z.infer<typeof productImportRowErrorSchema>;
+
+export const productImportResponseSchema = z.object({
+  createdCount: z.number().int(),
+  errors: z.array(productImportRowErrorSchema),
+});
+export type ProductImportResponse = z.infer<typeof productImportResponseSchema>;

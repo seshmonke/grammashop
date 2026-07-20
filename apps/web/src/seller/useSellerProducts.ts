@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   productImageUploadResponseSchema,
+  productImportResponseSchema,
   sellerProductListResponseSchema,
   sellerProductSchema,
   type CreateProductRequest,
+  type ProductImportResponse,
   type ProductVariantInput,
   type ProductVariantUpdate,
   type SellerProduct,
@@ -133,6 +135,25 @@ export function useUploadProductImage() {
         formData,
       );
       return productImageUploadResponseSchema.parse(data).image;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+  });
+}
+
+// Пакетная заливка каталога Excel-шаблоном (см.
+// STACK.md#пакетная-заливка-каталога-спринт-18) — partial-успех, ответ
+// содержит и созданное количество, и построчные ошибки, поэтому не
+// бросает при непустом errors (это не сетевая ошибка запроса).
+export function useImportProducts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File): Promise<ProductImportResponse> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await apiClient.post("/seller/products/import", formData);
+      return productImportResponseSchema.parse(data);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
