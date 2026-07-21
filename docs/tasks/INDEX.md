@@ -79,3 +79,4 @@
 21. [Регистрация магазина до оплаты + льготы](21-seller-registration-grace.md)
 22. [Свести прод к фримиум-концепции](22-freemium-prod-sync.md)
 23. [ПДн-долг + дешёвый технический долг](23-pdn-and-cheap-debt.md)
+24. [Уведомления продавцу + баги регистрации](24-notifications-and-registration-bugs.md) — текущий
