@@ -12,8 +12,10 @@ export const sellerStatuses = ["active", "blocked"] as const;
 export const sellerStatusSchema = z.enum(sellerStatuses);
 export type SellerStatus = z.infer<typeof sellerStatusSchema>;
 
-// Тариф подписки (см. CONCEPT.md#тарифы). Три уровня — фундамент, набор
-// расширяем позже без смены схемы.
+// Тариф подписки (см. CONCEPT.md#тарифы): tier1 = Free, tier2 = Premium.
+// tier3 — наследие прежней трёхуровневой сетки (решение 21.07.2026),
+// выведен из употребления, но не удалён из enum — миграция БД не нужна,
+// на проде живых подписок tier3 нет (продукт ещё не в паблике).
 export const subscriptionTiers = ["tier1", "tier2", "tier3"] as const;
 export const subscriptionTierSchema = z.enum(subscriptionTiers);
 export type SubscriptionTier = z.infer<typeof subscriptionTierSchema>;

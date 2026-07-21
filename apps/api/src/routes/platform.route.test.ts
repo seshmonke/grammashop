@@ -246,7 +246,7 @@ describe("/platform/sellers", () => {
       await app.close();
     });
 
-    it("без подписки → создаёт подписку Тарифа 1, active, paidUntil ~ сейчас + N месяцев", async () => {
+    it("без подписки → создаёт подписку Premium, active, paidUntil ~ сейчас + N месяцев", async () => {
       const app = buildApp();
       const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
       const sellerId = await seedSeller(SELLER_NO_SUB_TG, "Без подписки", false);
@@ -260,7 +260,7 @@ describe("/platform/sellers", () => {
       );
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
-      expect(body.subscription.tier).toBe("tier1");
+      expect(body.subscription.tier).toBe("tier2");
       expect(body.subscription.status).toBe("active");
 
       const paidUntil = new Date(body.subscription.paidUntil);

@@ -61,12 +61,16 @@ function addMonths(date: Date, months: number): Date {
 }
 
 // Льгота — N месяцев доступа без ЮKassa (см.
-// CONCEPT.md#оплата-подписки-продавцом, Спринт 21). Отсчёт — от большего
-// из (сейчас, текущий paidUntil): льгота поверх ещё не истёкшей подписки
-// прибавляется к остатку, а не «съедается» им; поверх истёкшей/отсутствующей
-// подписки считается от сейчас. Создаёт подписку Тарифа 1 active, если её
-// не было, иначе сдвигает paidUntil и возвращает статус в active (грейс до
-// оплаты снимается льготой так же, как suspended/canceled).
+// CONCEPT.md#оплата-подписки-продавцом, Спринт 21, уточнение
+// Спринта 22). Отсчёт — от большего из (сейчас, текущий paidUntil):
+// льгота поверх ещё не истёкшей подписки прибавляется к остатку, а не
+// «съедается» им; поверх истёкшей/отсутствующей подписки считается от
+// сейчас. Создаёт подписку Premium (tier2) active, если её не было —
+// льгота выдаётся только на Premium, обходить верификацию Free (карта)
+// вручную незачем (см. CONCEPT.md#тарифы). Если подписка уже есть,
+// сдвигает paidUntil и возвращает статус в active (грейс до оплаты
+// снимается льготой так же, как suspended/canceled), тариф существующей
+// подписки не трогает.
 export async function grantGrace(
   sellerId: number,
   months: number,
@@ -104,7 +108,7 @@ export async function grantGrace(
 
   const [created] = await db
     .insert(subscriptions)
-    .values({ sellerId, tier: "tier1", status: "active", paidUntil })
+    .values({ sellerId, tier: "tier2", status: "active", paidUntil })
     .returning({
       tier: subscriptions.tier,
       status: subscriptions.status,

@@ -156,7 +156,7 @@ export function SellerProfile() {
 
               <div>
                 <label className="mb-1 block text-sm text-tg-hint" htmlFor="paymentDetails">
-                  Реквизиты для перевода (Тариф 1)
+                  Реквизиты для перевода (Free)
                 </label>
                 <textarea
                   id="paymentDetails"

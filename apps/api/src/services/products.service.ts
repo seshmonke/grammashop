@@ -8,7 +8,7 @@ import type {
 } from "@grammashop/shared";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../db/client.js";
-import { products, productVariants } from "../db/schema.js";
+import { products, productVariants, subscriptions } from "../db/schema.js";
 import {
   listProductImageRows,
   loadImagesForProduct,
@@ -19,10 +19,23 @@ import { s3Bucket, s3Client } from "../s3/client.js";
 
 // Продавцовская админка товаров (CRUD, см. STACK.md#роутинг). Лимиты
 // тарифа считаются здесь, не в БД-констрейнтах (ревью, задача Спринта 11):
-// 30 карточек и 10 вариантов на карточку — рабочий ориентир Тарифа 1, v1
-// не знает других тарифов (см. CONCEPT.md#скоуп-v1-mvp).
-const MAX_PRODUCTS_PER_SELLER = 30;
+// 10 вариантов на карточку — общий для обоих тарифов; лимит карточек —
+// по тарифу продавца (Free/Premium, см. CONCEPT.md#тарифы, Спринт 22).
+const MAX_PRODUCTS_FREE = 30;
+const MAX_PRODUCTS_PREMIUM = 3000;
 const MAX_VARIANTS_PER_PRODUCT = 10;
+
+// Продавец без записи в subscriptions (только что зарегистрирован, льготу
+// ещё не получал) считается Free — по духу Спринта 21 «каталог
+// наполняется без оплаты», не отказ. tier3 — наследие прежней сетки, живых
+// подписок нет, до Premium не дотягивает.
+async function productLimitFor(sellerId: number): Promise<number> {
+  const [row] = await db
+    .select({ tier: subscriptions.tier })
+    .from(subscriptions)
+    .where(eq(subscriptions.sellerId, sellerId));
+  return row?.tier === "tier2" ? MAX_PRODUCTS_PREMIUM : MAX_PRODUCTS_FREE;
+}
 
 function toSellerProduct(
   product: { id: number; name: string; description: string | null },
@@ -96,7 +109,7 @@ export async function createProduct(
     .from(products)
     .where(eq(products.sellerId, sellerId));
   const existingCount = productCountRow?.value ?? 0;
-  if (existingCount >= MAX_PRODUCTS_PER_SELLER) {
+  if (existingCount >= (await productLimitFor(sellerId))) {
     return { ok: false, reason: "product_limit" };
   }
 

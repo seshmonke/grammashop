@@ -27,9 +27,9 @@ const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
 };
 
 const SUBSCRIPTION_TIER_LABELS: Record<SubscriptionTier, string> = {
-  tier1: "Тариф 1",
-  tier2: "Тариф 2",
-  tier3: "Тариф 3",
+  tier1: "Free",
+  tier2: "Premium",
+  tier3: "Тариф 3 (устарел)",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", {

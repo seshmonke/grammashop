@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
 import { formatPrice } from "../../lib/money";
+import { useSellerProfile } from "../../seller/useSellerProfile";
 import {
   useDeleteProduct,
   useImportProducts,
@@ -11,11 +12,20 @@ import {
 import type { ProductImportResponse } from "@grammashop/shared";
 
 // Список товаров продавца (см. STACK.md#роутинг: «товары (CRUD)»). Лимит
-// 30 карточек (Тариф 1, см. CONCEPT.md#тарифы) проверяется на бэке — здесь
-// счётчик только информативный.
+// (Free 30 / Premium 3000, см. CONCEPT.md#тарифы) проверяется на бэке —
+// здесь счётчик только информативный, лимит для отображения зеркалит
+// тариф из профиля продавца (Спринт 22).
+const FREE_PRODUCT_LIMIT = 30;
+const PREMIUM_PRODUCT_LIMIT = 3000;
+
 export function SellerHome() {
   const session = useSession();
   const { data: products, isLoading, isError } = useSellerProducts();
+  const { data: profile } = useSellerProfile();
+  const productLimit =
+    profile?.subscription?.tier === "tier2"
+      ? PREMIUM_PRODUCT_LIMIT
+      : FREE_PRODUCT_LIMIT;
   const deleteProduct = useDeleteProduct();
   const importProducts = useImportProducts();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +60,9 @@ export function SellerHome() {
         <div className="flex items-center justify-between">
           <h1 className="y2k-heading font-display text-lg text-tg-text">Товары</h1>
           {products && (
-            <p className="shrink-0 text-sm text-tg-hint">{products.length} / 30</p>
+            <p className="shrink-0 text-sm text-tg-hint">
+              {products.length} / {productLimit}
+            </p>
           )}
         </div>
         {/* overflow-x-auto — кнопок стало 4 (плюс «Платформа» у админа-продавца),

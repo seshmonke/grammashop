@@ -3,7 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import { sellerProductListResponseSchema } from "@grammashop/shared";
 import { buildApp } from "../app.js";
 import { db } from "../db/client.js";
-import { products, productVariants, sellers } from "../db/schema.js";
+import { products, productVariants, sellers, subscriptions } from "../db/schema.js";
 
 // /seller/products — продавцовская админка товаров (CRUD карточек +
 // вариантов). Требует JWT с sellerId (продавец), не просто валидный JWT —
@@ -144,7 +144,7 @@ describe("/seller/products", () => {
       await app.close();
     });
 
-    it("31-я карточка продавца → 400 (лимит 30, Тариф 1)", async () => {
+    it("31-я карточка продавца без подписки → 400 (Free-лимит 30 по умолчанию)", async () => {
       const app = buildApp();
       const sellerId = await seedSeller(OWNER_TG, "owner");
       const token = await tokenFor(app, { sellerId });
@@ -155,6 +155,70 @@ describe("/seller/products", () => {
 
       const res = await req(app, "POST", "/seller/products", token, {
         name: "Тридцать первый",
+        variants: oneVariant,
+      });
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+  });
+
+  describe("лимит карточек по тарифу (Спринт 22)", () => {
+    it("31-я карточка на tier1 (Free, явная подписка) → 400", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      await db
+        .insert(subscriptions)
+        .values({ sellerId, tier: "tier1", status: "active" });
+      const token = await tokenFor(app, { sellerId });
+
+      for (let i = 0; i < 30; i++) {
+        await db.insert(products).values({ sellerId, name: `Товар ${i}` });
+      }
+
+      const res = await req(app, "POST", "/seller/products", token, {
+        name: "Тридцать первый",
+        variants: oneVariant,
+      });
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
+    it("31-я карточка на tier2 (Premium) → создаётся, Free-лимит не применяется", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      await db
+        .insert(subscriptions)
+        .values({ sellerId, tier: "tier2", status: "active" });
+      const token = await tokenFor(app, { sellerId });
+
+      for (let i = 0; i < 30; i++) {
+        await db.insert(products).values({ sellerId, name: `Товар ${i}` });
+      }
+
+      const res = await req(app, "POST", "/seller/products", token, {
+        name: "Тридцать первый",
+        variants: oneVariant,
+      });
+      expect(res.statusCode).toBe(201);
+      await app.close();
+    });
+
+    it("3001-я карточка на tier2 (Premium) → 400 (лимит 3000)", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      await db
+        .insert(subscriptions)
+        .values({ sellerId, tier: "tier2", status: "active" });
+      const token = await tokenFor(app, { sellerId });
+
+      await db
+        .insert(products)
+        .values(
+          Array.from({ length: 3000 }, (_, i) => ({ sellerId, name: `Товар ${i}` })),
+        );
+
+      const res = await req(app, "POST", "/seller/products", token, {
+        name: "Три тысячи первый",
         variants: oneVariant,
       });
       expect(res.statusCode).toBe(400);
