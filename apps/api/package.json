@@ -13,6 +13,7 @@
     "db:migrate": "tsc && node dist/db/migrate.js",
     "db:seed": "tsx src/db/seed.ts",
     "verify:s3": "tsx src/s3/verify.ts",
+    "verify:yookassa": "tsx src/yookassa/verify.ts",
     "backup:db": "tsx src/db/backup.ts",
     "restore-check:db": "tsx src/db/restore-check.ts",
     "anonymize-seller:db": "tsx src/db/anonymize-seller.ts"
