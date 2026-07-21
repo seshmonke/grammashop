@@ -86,3 +86,4 @@
 24. [Уведомления продавцу + баги регистрации](24-notifications-and-registration-bugs.md)
 25. [`/start`-хендлер бота + уборка бэкапа реструктуризации](25-start-handler-rate-limit-cleanup.md)
 26. [Биллинг-движок подписки на ЮKassa (sandbox)](26-yookassa-billing-engine.md) — закрыт
+27. [UI оплаты подписки + heartbeat-мониторинг](27-subscription-payment-ui-heartbeat.md) — состав зафиксирован, ждёт команды старта
