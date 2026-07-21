@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   sellerProfileSchema,
+  startSubscriptionPaymentResponseSchema,
   type SellerProfile,
+  type StartSubscriptionPaymentResponse,
   type UpdateSellerProfileRequest,
 } from "@grammashop/shared";
 import { apiClient } from "../lib/api-client";
@@ -27,6 +29,24 @@ export function useUpdateSellerProfile() {
     mutationFn: async (input: UpdateSellerProfileRequest) => {
       const { data } = await apiClient.patch("/seller/profile", input);
       return sellerProfileSchema.parse(data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+    },
+  });
+}
+
+// POST /seller/subscription/pay (см. CONCEPT.md#оплата-подписки-продавцом,
+// Спринт 26-27) — первый платёж/привязка карты, дальнейшие продления идут
+// авторекуррентом на сервере без участия клиента. Статус подписки после
+// оплаты обновится вебхуком — инвалидируем профиль сразу, чтобы подхватить
+// его, как только он изменится.
+export function usePaySubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<StartSubscriptionPaymentResponse> => {
+      const { data } = await apiClient.post("/seller/subscription/pay");
+      return startSubscriptionPaymentResponseSchema.parse(data);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });

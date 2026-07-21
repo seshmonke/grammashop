@@ -12,6 +12,7 @@ import {
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { s3Bucket, s3Client } from "../s3/client.js";
+import { pushMetric } from "../monitoring/yandex-monitoring.js";
 import { selectKeysToDelete } from "./backup-retention.js";
 
 const PREFIX = "backups/";
@@ -112,6 +113,11 @@ try {
   await upload(encryptedPath, key);
   console.log("backup: загружен", key);
   await applyRetention();
+  // Dead-man's switch (см. docs/tasks/27-*.md): пишем метрику только после
+  // успешной заливки+ретеншна — молчание в Yandex Monitoring само по себе
+  // и есть сигнал «бэкап не прошёл», отдельный алерт на "backup упал" не
+  // нужен.
+  await pushMetric("backup.success", 1);
 } finally {
   await rm(workDir, { recursive: true, force: true });
 }

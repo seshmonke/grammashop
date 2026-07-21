@@ -3,8 +3,13 @@ import { Link } from "react-router-dom";
 import type { SellerProfile, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
-import { platformAdminChatUrl, shopLink } from "../../lib/platform";
-import { useSellerProfile, useUpdateSellerProfile } from "../../seller/useSellerProfile";
+import { openExternalLink } from "../../lib/telegram";
+import { shopLink } from "../../lib/platform";
+import {
+  usePaySubscription,
+  useSellerProfile,
+  useUpdateSellerProfile,
+} from "../../seller/useSellerProfile";
 
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
@@ -18,18 +23,19 @@ const SUBSCRIPTION_TIER_LABELS: Record<SubscriptionTier, string> = {
   tier3: "Тариф 3 (устарел)",
 };
 
-// Баннер статуса подписки (см. STACK.md#роутинг, Спринт 21): до готовности
-// ЮKassa единственный способ открыть витрину — льгота от админа, поэтому
-// вместо оплаты — диплинк в личку платформы. Не активна и не в грейсе —
-// та же формулировка для обоих случаев (регистрация без оплаты и
-// закончившийся грейс), причина не детализируется — это фронт-зеркало
-// того же принципа, что и в shop.service (см. CONCEPT.md).
+// Баннер статуса подписки (см. CONCEPT.md#оплата-подписки-продавцом,
+// Спринт 21/26-27): активна/грейс — витрина работает, показываем дату
+// окончания. Иначе (suspended/canceled/подписки ещё нет) — кнопка оплаты,
+// дёргающая POST /seller/subscription/pay (движок Спринта 26). confirmationUrl
+// может быть null (метод не требует подтверждения — статус подтвердится
+// вебхуком), тогда просто ждём, без редиректа.
 function SubscriptionBanner({
   subscription,
 }: {
   subscription: SellerProfile["subscription"];
 }) {
   const isVisible = subscription?.status === "active" || subscription?.status === "grace";
+  const paySubscription = usePaySubscription();
 
   if (isVisible) {
     return (
@@ -47,20 +53,41 @@ function SubscriptionBanner({
     );
   }
 
+  async function handlePay() {
+    const result = await paySubscription.mutateAsync();
+    if (result.confirmationUrl) {
+      openExternalLink(result.confirmationUrl);
+    }
+  }
+
   return (
     <div className="rounded-2xl bg-tg-surface p-4">
-      <p className="font-medium text-tg-text">Витрина скрыта — подписка не активна</p>
-      <p className="mt-1 text-sm text-tg-hint">
-        Пока не готова оплата через ЮKassa, доступ выдаёт платформа вручную.
+      <p className="font-medium text-tg-text">
+        {subscription?.status === "suspended"
+          ? "Витрина скрыта — подписка приостановлена"
+          : "Витрина скрыта — подписка не активна"}
       </p>
-      <a
-        href={platformAdminChatUrl()}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-3 block rounded-2xl bg-tg-accent py-2 text-center font-medium text-tg-accent-text"
+      <p className="mt-1 text-sm text-tg-hint">
+        Оплата и продление — через ЮKassa, дальше подписка продлевается
+        автоматически.
+      </p>
+      {paySubscription.isError && (
+        <p className="mt-2 text-sm text-tg-destructive">
+          Не удалось начать оплату — попробуйте ещё раз.
+        </p>
+      )}
+      {paySubscription.isSuccess && !paySubscription.data.confirmationUrl && (
+        <p className="mt-2 text-sm text-tg-hint">
+          Платёж обрабатывается, статус обновится автоматически.
+        </p>
+      )}
+      <Button
+        onClick={handlePay}
+        disabled={paySubscription.isPending}
+        className="mt-3 w-full bg-magenta text-white hover:bg-magenta/90"
       >
-        Написать платформе
-      </a>
+        {paySubscription.isPending ? "Открываем оплату…" : "Оплатить подписку"}
+      </Button>
     </div>
   );
 }

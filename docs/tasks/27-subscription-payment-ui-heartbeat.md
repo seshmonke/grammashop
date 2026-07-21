@@ -11,14 +11,41 @@
 
 Задачи:
 
-- [ ] UI-кнопка «оплатить подписку» в админке продавца (`apps/web`):
+- [x] UI-кнопка «оплатить подписку» в админке продавца (`apps/web`):
   кнопка дёргает `POST /seller/subscription/pay` и открывает
-  `confirmation_url` (в ТМА — `openLink`/redirect), плюс отображение
-  статуса подписки (active/grace/suspended, дата до). Тестируется на
-  реальном sandbox ЮKassa — ключи тестового магазина уже в `.env`,
-  сам платёжный путь подтверждён Спринтом 26.
-- [ ] Heartbeat-мониторинг (наблюдаемость «тишины»): внешний пинг
-  `/health` каждые N минут (healthchecks.io/UptimeRobot) → алерт при
-  недоступности; бэкап-скрипт пингует свой URL после успешной заливки →
-  dead-man's switch при отсутствии пинга. Проверить, что `/health` не
+  `confirmationUrl` (поле camelCase; может быть `null` — тогда без
+  редиректа, статус разрешится вебхуком) через `openExternalLink`
+  (`apps/web/src/lib/telegram.ts`), плюс отображение статуса подписки
+  (`active/grace/suspended/canceled`, дата до) в `SellerProfile.tsx` —
+  берётся не с `/pay`, а с уже существующего `GET /seller/profile`.
+  Тестируется на реальном sandbox ЮKassa — ключи тестового магазина уже
+  в `.env`, сам платёжный путь подтверждён Спринтом 26.
+- [x] Heartbeat-мониторинг на Yandex Cloud Monitoring (прод-VM и так на
+  Yandex Cloud, см. `docs/STACK.md#хостинг-и-деплой`): Cloud Function на
+  Timer-триггере (cron) пингует `/health` снаружи и пишет метрику в
+  Monitoring; `backup.ts` пишет метрику после успешной заливки бэкапа
+  (dead-man's switch). Алерты на обе метрики — через Yandex Monitoring,
+  канал — Telegram (нативная интеграция). Проверить, что `/health` не
   отдаёт ПДн.
+
+## Анализ перед стартом
+
+- **Задача 1**: чистая, состав не меняется. Ресёрч по коду (не по
+  памяти) уточнил детали: поле в ответе `/pay` — `confirmationUrl`
+  (camelCase, не `confirmation_url`) и может быть `null`; статус подписки
+  берётся с `GET /seller/profile`, а не с `/pay`; реальный enum статусов —
+  `active/grace/suspended/canceled` (в исходной формулировке задачи
+  пропущен `canceled`). Место в коде — уже готовый `SubscriptionBanner`
+  в `SellerProfile.tsx`, обёртка над Telegram `openLink` уже есть.
+- **Задача 2**: ресёрч разнёс пару «healthchecks.io/UptimeRobot» — они
+  не взаимозаменяемы: healthchecks.io — только пассивный приём пингов, не
+  умеет опрашивать `/health` снаружи; free-план UptimeRobot с декабря
+  2024 запрещает коммерческое использование по ToS (нужен платный Solo,
+  ~$9-10/мес). Это меняло способ решения на уровне внешнего сервиса —
+  вынесено в диалог. Согласовано с пользователем 21.07.2026: остаёмся в
+  экосистеме Yandex Cloud (VM и так там) — Yandex Cloud Monitoring,
+  Cloud Function на Timer-триггере для внешнего пинга `/health`,
+  кастомные метрики + алерты, канал — Telegram нативно. Дороже по
+  обвязке (своя Cloud Function, сервис-аккаунт, IAM), чем готовый
+  SaaS-вариант (Better Stack рассматривался и отклонён), но один вендор
+  и без стороннего ToS.
