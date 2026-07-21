@@ -85,3 +85,4 @@
 23.5. [Ревизия рабочих инструкций и доски](23.5-instructions-and-board-restructure.md)
 24. [Уведомления продавцу + баги регистрации](24-notifications-and-registration-bugs.md)
 25. [`/start`-хендлер бота + уборка бэкапа реструктуризации](25-start-handler-rate-limit-cleanup.md)
+26. [Биллинг-движок подписки на ЮKassa (sandbox)](26-yookassa-billing-engine.md) — закрыт

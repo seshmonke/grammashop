@@ -6,6 +6,10 @@ import { PgBoss } from "pg-boss";
 // (services/orders.service.ts, notifications/order-notification.ts).
 export const ORDER_NOTIFICATION_QUEUE = "order-notification";
 
+// Ежедневный свип рекуррентных списаний подписки на ЮKassa (см.
+// billing/recurring-worker.ts, Спринт 26) — cron-джоба на том же pg-boss.
+export const SUBSCRIPTION_BILLING_QUEUE = "subscription-billing";
+
 export const boss = new PgBoss({
   connectionString: process.env.DATABASE_URL,
 });
