@@ -84,4 +84,4 @@
 23. [ПДн-долг + дешёвый технический долг](23-pdn-and-cheap-debt.md)
 23.5. [Ревизия рабочих инструкций и доски](23.5-instructions-and-board-restructure.md)
 24. [Уведомления продавцу + баги регистрации](24-notifications-and-registration-bugs.md)
-25. [`/start`-хендлер бота + rate limiting + уборка бэкапа реструктуризации](25-start-handler-rate-limit-cleanup.md) — состав зафиксирован, ждёт команды старта
+25. [`/start`-хендлер бота + уборка бэкапа реструктуризации](25-start-handler-rate-limit-cleanup.md) — состав скорректирован анализом (rate limiting снят), ждёт команды старта
