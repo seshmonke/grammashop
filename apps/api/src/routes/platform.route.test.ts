@@ -272,7 +272,7 @@ describe("/platform/sellers", () => {
       await app.close();
     });
 
-    it("с активной подпиской в будущем → сдвигает paidUntil от текущей даты подписки, не от сейчас", async () => {
+    it("с активной подпиской в будущем → сдвигает paidUntil от текущей даты подписки, не от сейчас, и апгрейдит tier до Premium", async () => {
       const app = buildApp();
       const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
       const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", true);
@@ -290,12 +290,37 @@ describe("/platform/sellers", () => {
       );
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
+      expect(body.subscription.tier).toBe("tier2");
       const paidUntil = new Date(body.subscription.paidUntil);
       const expected = new Date(before!.paidUntil!);
       expected.setMonth(expected.getMonth() + 1);
       expect(
         Math.abs(paidUntil.getTime() - expected.getTime()),
       ).toBeLessThan(60_000);
+      await app.close();
+    });
+
+    it("существующая подписка tier1 (льгота Спринта 21) → grace апгрейдит до tier2, не оставляет Free", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", false);
+      await db.insert(subscriptions).values({
+        sellerId,
+        tier: "tier1",
+        status: "active",
+        paidUntil: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+      });
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/grace`,
+        adminToken,
+        { months: 1 },
+      );
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.subscription.tier).toBe("tier2");
       await app.close();
     });
 
@@ -321,6 +346,7 @@ describe("/platform/sellers", () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.subscription.status).toBe("active");
+      expect(body.subscription.tier).toBe("tier2");
       const paidUntil = new Date(body.subscription.paidUntil);
       const expected = new Date();
       expected.setMonth(expected.getMonth() + 1);

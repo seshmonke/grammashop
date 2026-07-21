@@ -576,7 +576,14 @@ section h2 {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   padding: 56px 0;
-  background: linear-gradient(160deg, var(--magenta) 0%, var(--magenta-deep) 100%);
+  /* Светлый, не затемнённый magenta — контраст против void-фона
+     остального лендинга важнее «премиальной» темноты (правка с прода
+     21.07.2026): смесь magenta с белым, не magenta-deep. */
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--magenta) 45%, white 55%) 0%,
+    var(--magenta) 100%
+  );
   border-top: none;
 }
 
@@ -639,8 +646,8 @@ section h2 {
 
 .premium-roadmap .soon {
   flex-shrink: 0;
-  background: var(--ice);
-  color: var(--void);
+  background: var(--void);
+  color: var(--ice);
   font-family: var(--display);
   font-variation-settings: "wght" 700;
   font-size: 0.62rem;

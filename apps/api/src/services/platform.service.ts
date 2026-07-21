@@ -65,12 +65,12 @@ function addMonths(date: Date, months: number): Date {
 // Спринта 22). Отсчёт — от большего из (сейчас, текущий paidUntil):
 // льгота поверх ещё не истёкшей подписки прибавляется к остатку, а не
 // «съедается» им; поверх истёкшей/отсутствующей подписки считается от
-// сейчас. Создаёт подписку Premium (tier2) active, если её не было —
-// льгота выдаётся только на Premium, обходить верификацию Free (карта)
-// вручную незачем (см. CONCEPT.md#тарифы). Если подписка уже есть,
-// сдвигает paidUntil и возвращает статус в active (грейс до оплаты
-// снимается льготой так же, как suspended/canceled), тариф существующей
-// подписки не трогает.
+// сейчас. Всегда выставляет tier2 (Premium) — льгота выдаётся только на
+// Premium, обходить верификацию Free (карта) вручную незачем (см.
+// CONCEPT.md#тарифы). Это касается и уже существующих подписок: продавцы
+// со старой Free-льготой Спринта 21 при повторной выдаче должны реально
+// получить лимит Premium, а не унаследовать Free (найдено на проде
+// 21.07.2026 — первая реализация трогала tier только при создании).
 export async function grantGrace(
   sellerId: number,
   months: number,
@@ -96,7 +96,7 @@ export async function grantGrace(
   if (existing) {
     const [updated] = await db
       .update(subscriptions)
-      .set({ status: "active", paidUntil })
+      .set({ tier: "tier2", status: "active", paidUntil })
       .where(eq(subscriptions.id, existing.id))
       .returning({
         tier: subscriptions.tier,
