@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { SellerProfile } from "@grammashop/shared";
+import type { SellerProfile, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
 import { platformAdminChatUrl, shopLink } from "../../lib/platform";
@@ -11,6 +11,12 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
   month: "short",
   year: "numeric",
 });
+
+const SUBSCRIPTION_TIER_LABELS: Record<SubscriptionTier, string> = {
+  tier1: "Free",
+  tier2: "Premium",
+  tier3: "Тариф 3 (устарел)",
+};
 
 // Баннер статуса подписки (см. STACK.md#роутинг, Спринт 21): до готовности
 // ЮKassa единственный способ открыть витрину — льгота от админа, поэтому
@@ -28,7 +34,10 @@ function SubscriptionBanner({
   if (isVisible) {
     return (
       <div className="rounded-2xl bg-tg-surface p-4">
-        <p className="font-medium text-tg-text">Витрина активна</p>
+        <p className="font-medium text-tg-text">
+          Витрина активна
+          {subscription?.tier && ` · ${SUBSCRIPTION_TIER_LABELS[subscription.tier]}`}
+        </p>
         {subscription?.paidUntil && (
           <p className="mt-1 text-sm text-tg-hint">
             Активна до {dateFormatter.format(subscription.paidUntil)}

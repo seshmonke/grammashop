@@ -45,10 +45,21 @@ export function PlatformHome() {
   const { data: sellers, isLoading, isError } = usePlatformSellers();
   const updateStatus = useUpdateSellerStatus();
   const grantGrace = useGrantGrace();
-  const [graceMonths, setGraceMonths] = useState<Record<number, number>>({});
+  // Строка, не число — иначе value контролируемого input'а на каждое
+  // нажатие схлопывается через `|| DEFAULT_GRACE_MONTHS` обратно в 1, и
+  // единичку невозможно стереть, чтобы напечатать другую цифру (найдено
+  // на проде). Разбор и клэмп — только в момент отправки.
+  const [graceMonths, setGraceMonths] = useState<Record<number, string>>({});
+
+  function monthsFor(sellerId: number): number {
+    const parsed = Number(graceMonths[sellerId]);
+    return Number.isInteger(parsed) && parsed >= 1
+      ? Math.min(parsed, 24)
+      : DEFAULT_GRACE_MONTHS;
+  }
 
   function handleGrantGrace(sellerId: number, shopName: string) {
-    const months = graceMonths[sellerId] ?? DEFAULT_GRACE_MONTHS;
+    const months = monthsFor(sellerId);
     if (!confirm(`Выдать «${shopName}» доступ на ${months} мес. без оплаты?`)) {
       return;
     }
@@ -125,11 +136,11 @@ export function PlatformHome() {
                   min={1}
                   max={24}
                   aria-label={`Месяцев доступа для ${seller.shopName}`}
-                  value={graceMonths[seller.id] ?? DEFAULT_GRACE_MONTHS}
+                  value={graceMonths[seller.id] ?? String(DEFAULT_GRACE_MONTHS)}
                   onChange={(e) =>
                     setGraceMonths((m) => ({
                       ...m,
-                      [seller.id]: Number(e.target.value) || DEFAULT_GRACE_MONTHS,
+                      [seller.id]: e.target.value,
                     }))
                   }
                   className="w-14 rounded-lg border border-tg-separator bg-tg-bg px-2 py-1 text-sm text-tg-text"
