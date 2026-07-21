@@ -5,7 +5,10 @@ import { buildApp } from "../app.js";
 import { db } from "../db/client.js";
 import { products, productVariants, sellers } from "../db/schema.js";
 
-let tgCounter = 700460000;
+// База сдвинута на Date.now() — фиксированное значение 700460000 сталкивалось
+// с `sellers_telegram_id_unique` при повторном прогоне без пересоздания
+// тестовой БД (прошлые продавцы из предыдущего прогона никуда не делись).
+let tgCounter = 700460000 + Date.now();
 function nextTg(): number {
   tgCounter += 1;
   return tgCounter;

@@ -14,7 +14,7 @@ export function RegisterForm() {
   const registerSeller = useRegisterSeller();
   const [shopName, setShopName] = useState("");
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+7");
   const [consent, setConsent] = useState(false);
 
   useEffect(() => {

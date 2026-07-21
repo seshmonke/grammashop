@@ -116,7 +116,15 @@ export async function registerOrderNotificationWorker(): Promise<string> {
   await boss.createQueue(ORDER_NOTIFICATION_QUEUE);
   return boss.work<OrderNotificationJobData>(ORDER_NOTIFICATION_QUEUE, async (jobs) => {
     for (const job of jobs) {
-      await sendOrderNotification(job.data.orderId);
+      try {
+        await sendOrderNotification(job.data.orderId);
+      } catch (err) {
+        Sentry.captureException(err);
+        // Не глотаем: pg-boss должен по-прежнему видеть провал и класть
+        // job в `failed` (это не единственный канал видимости теперь, но
+        // и не бесполезный — история попыток остаётся в БД).
+        throw err;
+      }
     }
   });
 }

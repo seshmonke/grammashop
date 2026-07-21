@@ -22,6 +22,17 @@ export interface TelegramContactResponse {
   };
 }
 
+// Данные события `contactRequested` — та же форма, что и второй аргумент
+// колбэка requestContact (см. requestContactPhone ниже), плюс `status` для
+// различения отмены. Официальная документация Telegram описывает колбэк
+// requestContact как принимающий только boolean, но независимо от неё
+// (обсуждение типов @types/telegram-web-app, пакет @twa-dev/types) реальные
+// клиенты передают и второй аргумент, и параллельно шлют это же событие —
+// какой канал сработает, зависит от версии клиента, поэтому слушаем оба.
+export interface TelegramContactEventData extends TelegramContactResponse {
+  status?: "sent" | "cancelled";
+}
+
 export interface TelegramWebApp {
   // Сырая подписанная строка initData (пустая — если открыто вне Telegram).
   initData: string;
@@ -40,6 +51,16 @@ export interface TelegramWebApp {
   // пустое поле).
   requestContact?: (
     callback: (sent: boolean, response?: TelegramContactResponse) => void,
+  ) => void;
+  // Некоторые версии клиента доставляют результат requestContact только
+  // через это событие, а не через второй аргумент колбэка выше.
+  onEvent?: (
+    eventType: "contactRequested",
+    callback: (data?: TelegramContactEventData) => void,
+  ) => void;
+  offEvent?: (
+    eventType: "contactRequested",
+    callback: (data?: TelegramContactEventData) => void,
   ) => void;
 }
 
@@ -81,19 +102,30 @@ export function requestContactPhone(): Promise<string | null> {
   const webApp = getWebApp();
   if (!webApp?.requestContact) return Promise.resolve(null);
   return new Promise((resolve) => {
+    let settled = false;
+    const eventHandler = (data?: TelegramContactEventData) => {
+      finish(data?.responseUnsafe?.contact?.phone_number ?? null);
+    };
+    function finish(phone: string | null) {
+      if (settled) return;
+      settled = true;
+      webApp?.offEvent?.("contactRequested", eventHandler);
+      resolve(phone);
+    }
+    webApp!.onEvent?.("contactRequested", eventHandler);
     try {
-      webApp.requestContact!((sent, response) => {
+      webApp!.requestContact!((sent, response) => {
         if (!sent) {
-          resolve(null);
+          finish(null);
           return;
         }
-        resolve(response?.responseUnsafe?.contact?.phone_number ?? null);
+        finish(response?.responseUnsafe?.contact?.phone_number ?? null);
       });
     } catch {
       // Клиент Telegram может не поддерживать метод (старая версия) —
       // синхронный throw вместо отказа через callback, тот же исход:
       // поле остаётся пустым и редактируемым.
-      resolve(null);
+      finish(null);
     }
   });
 }

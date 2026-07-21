@@ -1,4 +1,5 @@
 import { Bot } from "grammy";
+import { fetchWithTelegramIpFallback } from "./fetch-with-ip-fallback.js";
 
 // Платформенный бот (см. STACK.md#telegram-бот) — единственный клиент на
 // процесс, ленивый: конструктор не делает сетевых вызовов, но незачем
@@ -12,7 +13,7 @@ export function getBot(): Bot {
     if (!token) {
       throw new Error("TELEGRAM_BOT_TOKEN не задан — бот недоступен");
     }
-    bot = new Bot(token);
+    bot = new Bot(token, { client: { fetch: fetchWithTelegramIpFallback } });
   }
   return bot;
 }
