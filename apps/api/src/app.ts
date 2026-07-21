@@ -36,9 +36,14 @@ export function buildApp(): FastifyInstance {
         "подписи — только для локальной отладки вне Telegram",
     );
   }
-  app.register(cors, {
-    origin: `http://localhost:${process.env["WEB_PORT"] ?? "5173"}`,
-  });
+  // Только вне прода: в проде фронт и бэк — один origin через Caddy
+  // (см. STACK.md#хостинг-и-деплой), CORS не нужен, а разрешать
+  // localhost на бою — дыра просто так (ревью 21.07.2026, п.7).
+  if (process.env["NODE_ENV"] !== "production") {
+    app.register(cors, {
+      origin: `http://localhost:${process.env["WEB_PORT"] ?? "5173"}`,
+    });
+  }
   app.register(jwt, { secret: jwtSecret });
   // Лимит 8 МБ на файл — режет запрос до того, как он весь окажется в
   // памяти (см. STACK.md#пайплайн-фото-товара-спринт-16).

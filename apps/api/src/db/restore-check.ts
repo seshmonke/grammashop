@@ -1,6 +1,6 @@
 import "../env.js";
 import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -36,18 +36,63 @@ async function latestBackupKey(): Promise<string> {
   return latest;
 }
 
-async function downloadAndDecompress(
-  key: string,
-  filePath: string,
-): Promise<void> {
+async function download(key: string, filePath: string): Promise<void> {
   const got = await s3Client.send(
     new GetObjectCommand({ Bucket: s3Bucket, Key: key }),
   );
   if (!got.Body) {
     throw new Error(`пустое тело объекта ${key}`);
   }
+  await pipeline(got.Body as NodeJS.ReadableStream, createWriteStream(filePath));
+}
+
+// Пароль-фраза — в stdin процесса, не аргументом (см. backup.ts).
+async function decryptFile(inputPath: string, outputPath: string): Promise<void> {
+  const passphrase = process.env["BACKUP_GPG_PASSPHRASE"];
+  if (!passphrase) {
+    throw new Error("BACKUP_GPG_PASSPHRASE не задан — см. .env.example");
+  }
+
+  const gpg = spawn("gpg", [
+    "--batch",
+    "--yes",
+    "--passphrase-fd",
+    "0",
+    "--decrypt",
+    "-o",
+    outputPath,
+    inputPath,
+  ]);
+  let stderr = "";
+  gpg.stderr.on("data", (chunk: Buffer) => {
+    stderr += chunk.toString();
+  });
+  gpg.stdin.write(passphrase);
+  gpg.stdin.end();
+
+  const code = await new Promise<number>((resolve) => {
+    gpg.on("close", (c) => resolve(c ?? 1));
+  });
+  if (code !== 0) {
+    throw new Error(`gpg завершился с кодом ${code}: ${stderr}`);
+  }
+}
+
+// Дампы до раскатки шифрования (Спринт 23) остаются в S3 незашифрованными
+// до вытеснения ретеншном — читаем их как раньше, без расшифровки.
+async function downloadDump(key: string, gzPath: string): Promise<void> {
+  if (key.endsWith(".gpg")) {
+    const encryptedPath = `${gzPath}.gpg`;
+    await download(key, encryptedPath);
+    await decryptFile(encryptedPath, gzPath);
+  } else {
+    await download(key, gzPath);
+  }
+}
+
+async function decompress(gzPath: string, filePath: string): Promise<void> {
   await pipeline(
-    got.Body as NodeJS.ReadableStream,
+    createReadStream(gzPath),
     createGunzip(),
     createWriteStream(filePath),
   );
@@ -102,11 +147,13 @@ async function verifyRestore(): Promise<void> {
 initSentry();
 
 const workDir = await mkdtemp(path.join(tmpdir(), "grammashop-restore-check-"));
+const gzPath = path.join(workDir, "dump.sql.gz");
 const filePath = path.join(workDir, "dump.sql");
 
 try {
   const key = await latestBackupKey();
-  await downloadAndDecompress(key, filePath);
+  await downloadDump(key, gzPath);
+  await decompress(gzPath, filePath);
   await recreateDatabase();
   await restoreDump(filePath);
   await verifyRestore();

@@ -48,34 +48,65 @@
   повторных ручных прогонах без пересоздания тестовой БД). Остаётся в
   [backlog.md](backlog.md).
 
+Анализ перед стартом (21.07.2026):
+
+- Состав чистый, ни одна задача не меняет и не расширяет согласованный
+  скоуп — продолжаем без повторного согласования.
+- **GPG**: шифрование/расшифровка — через `gpg --batch --yes
+  --passphrase-fd 0 --symmetric --cipher-algo AES256`, пароль-фраза
+  подаётся в stdin процесса, не аргументом командной строки (виден в
+  `ps` иначе). Файловый режим (шифруем уже готовый `dump.sql.gz` в
+  отдельный файл), а не потоковый пайп — не конфликтует за stdin с
+  передачей пароля. `restore-check.ts` расшифровывает по расширению
+  `.gpg`, старые незашифрованные дампы (до конца ретеншна) читает как
+  раньше — иначе первая неделя после раскатки сломает restore-check на
+  переходных дампах.
+- **`pnpm deploy`**: пакет требует `injectWorkspacePackages: true` в
+  `pnpm-workspace.yaml` (меняет линковку воркспейсов везде, включая
+  локальную разработку) либо флаг `--legacy` (то же самое, только для
+  самой команды deploy, без побочных эффектов на дев). Берём `--legacy`
+  — уже своей ценой закрывает задачу, глобальную настройку менять незачем.
+  **Важное следствие**, всплывшее только при проверке: `pnpm deploy`
+  меняет раскладку рантайм-образа — скрипты переезжают из
+  `apps/api/dist/db/*.js` в `dist/db/*.js` (без префикса `apps/api/`).
+  Два systemd-юнита на прод-VM (`docker/systemd/grammashop-backup.service`,
+  `grammashop-restore-check.service`) хардкодят старый путь — их нужно
+  править вместе с `Dockerfile`, и после правки руками через SSH
+  (`sudo cp` + `daemon-reload`) обновить на самой VM: `git pull` их не
+  синхронизирует (см. память о деплое).
+- **CORS-гвард**: `NODE_ENV !== "production"` — проверено, что оба
+  dev-цикла (`docker-nginx` на `:5173`, dev-tunnel через Vite-прокси)
+  поднимаются с `NODE_ENV=development` (см. `docker-compose.override.yml`)
+  и не задевают гвард.
+
 Задачи:
 
-- [ ] Бэк: `apps/api/src/db/anonymize-seller.ts` — скрипт по образцу
+- [x] Бэк: `apps/api/src/db/anonymize-seller.ts` — скрипт по образцу
   `seed.ts`/`backup.ts`, принимает `sellerId`, обнуляет `fullName`,
   `phone`, `paymentDetails` в `sellers` (без удаления строки).
-- [ ] Концепция: зафиксировать сценарий обезличивания продавца в
+- [x] Концепция: зафиксировать сценарий обезличивания продавца в
   `CONCEPT.md#персональные-данные-152-фз` — по аналогии с уже описанным
   сценарием покупателя.
-- [ ] Бэк: `backup.ts` — шифровать дамп GPG (симметрично) перед
+- [x] Бэк: `backup.ts` — шифровать дамп GPG (симметрично) перед
   загрузкой в S3.
-- [ ] Бэк: `restore-check.ts` — расшифровывать перед восстановлением
+- [x] Бэк: `restore-check.ts` — расшифровывать перед восстановлением
   (пароль-фраза из отдельной переменной, не блокирует автоматический
   прогон в systemd timer).
-- [ ] Конфиг: `BACKUP_GPG_PASSPHRASE` — `.env.example` + `.env` на
+- [x] Конфиг: `BACKUP_GPG_PASSPHRASE` — `.env.example` + `.env` на
   прод-VM (вручную по SSH, как `POSTGRES_PASSWORD`).
-- [ ] Документация: `STACK.md#бэкапы` — зафиксировать GPG-шифрование.
-- [ ] Конфиг: убрать `PAYMENT_KEYS_MASTER_KEY` из `.env.example`
+- [x] Документация: `STACK.md#бэкапы` — зафиксировать GPG-шифрование.
+- [x] Конфиг: убрать `PAYMENT_KEYS_MASTER_KEY` из `.env.example`
   («про запас» без кода и решённой схемы хранения).
-- [ ] Бэк: CORS-плагин в `app.ts` — гвард по
+- [x] Бэк: CORS-плагин в `app.ts` — гвард по
   `NODE_ENV !== "production"`, не убирать целиком. Проверить оба
   dev-цикла после правки: браузер на `:5173` (docker-nginx) → api на
   `:3000` (кросс-ориджин, нужен CORS), и dev-tunnel цикл dev-бота
   (`scripts/dev-tunnel.sh`, same-origin через Vite-прокси `/api`, CORS
   не участвует).
-- [ ] Документация: `STACK.md` — абзац про staging: деплой сразу в
+- [x] Документация: `STACK.md` — абзац про staging: деплой сразу в
   прод как осознанный минус, дешёвая замена наготове (второй
   compose-профиль под staging-поддоменом), не реализуется сейчас.
-- [ ] Инфра: ужать runtime-образ `apps/api/Dockerfile` (`pnpm deploy
+- [x] Инфра: ужать runtime-образ `apps/api/Dockerfile` (`pnpm deploy
   --prod` или отдельный prod-install) — сейчас тащит весь монорепо
   (`COPY --from=build /repo ./`). Сохранить в образе
   `dist/db/{seed,backup,restore-check,anonymize-seller}.js` (запускаются
@@ -83,3 +114,28 @@
   (`pg_dump`/`psql`). После правки прогнать и dev-цикл с телефона
   (`scripts/dev-tunnel.sh` → `docker compose up --build api`), и
   `db:seed` в контейнере — не только прод.
+
+Обзор:
+
+- Все задачи закрыты и проверены локально: `pnpm --filter @grammashop/api
+  typecheck` чист, 155/155 тестов зелёные (после очистки тестовой БД —
+  флак из `products-import.route.test.ts` подтверждён как загрязнение
+  состояния между прогонами, не регрессия), `docker compose build api` +
+  `up` + `node dist/db/seed.js` + `node dist/db/anonymize-seller.js`
+  проверены вручную в контейнере.
+- **Побочная находка при проверке образа**: `dotenv` был в
+  `devDependencies`, но `env.ts` импортирует его безусловно при старте
+  (в т.ч. в проде) — с `--prod deploy` пакет вырезался, и рантайм падал
+  на старте с `ERR_MODULE_NOT_FOUND`. Перенесён в `dependencies`
+  (`apps/api/package.json`), лежит вне исходного списка задач, но без
+  этого сама задача про `pnpm deploy` не работала бы в проде.
+- **Не проверено мной** — цикл `scripts/dev-tunnel.sh` с телефона
+  (нужен реальный Telegram-клиент): образ и `docker compose up --build
+  api` собираются и стартуют чисто, но сквозной прогон через dev-бота
+  на телефоне — на пользователе.
+- **Остаётся сделать руками на прод-VM** (не автоматизируется через
+  `git pull`, см. память о деплое): скопировать обновлённые
+  `docker/systemd/grammashop-backup.service` и
+  `grammashop-restore-check.service` в `/etc/systemd/system/` +
+  `daemon-reload`; выставить `BACKUP_GPG_PASSPHRASE` в `.env` на VM
+  (как `POSTGRES_PASSWORD`, тем же способом через SSH-heredoc).

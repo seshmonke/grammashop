@@ -39,6 +39,42 @@ async function dumpToFile(filePath: string): Promise<void> {
   }
 }
 
+// Шифрование симметричным GPG (не SSE, не асимметричное — см.
+// docs/tasks/23-pdn-and-cheap-debt.md): пароль-фраза идёт в stdin
+// процесса, не аргументом командной строки — иначе видна в `ps`.
+async function encryptFile(inputPath: string, outputPath: string): Promise<void> {
+  const passphrase = process.env["BACKUP_GPG_PASSPHRASE"];
+  if (!passphrase) {
+    throw new Error("BACKUP_GPG_PASSPHRASE не задан — см. .env.example");
+  }
+
+  const gpg = spawn("gpg", [
+    "--batch",
+    "--yes",
+    "--passphrase-fd",
+    "0",
+    "--symmetric",
+    "--cipher-algo",
+    "AES256",
+    "-o",
+    outputPath,
+    inputPath,
+  ]);
+  let stderr = "";
+  gpg.stderr.on("data", (chunk: Buffer) => {
+    stderr += chunk.toString();
+  });
+  gpg.stdin.write(passphrase);
+  gpg.stdin.end();
+
+  const code = await new Promise<number>((resolve) => {
+    gpg.on("close", (c) => resolve(c ?? 1));
+  });
+  if (code !== 0) {
+    throw new Error(`gpg завершился с кодом ${code}: ${stderr}`);
+  }
+}
+
 async function upload(filePath: string, key: string): Promise<void> {
   const { size } = await stat(filePath);
   await s3Client.send(
@@ -67,11 +103,13 @@ async function applyRetention(): Promise<void> {
 
 const workDir = await mkdtemp(path.join(tmpdir(), "grammashop-backup-"));
 const filePath = path.join(workDir, "dump.sql.gz");
-const key = `${PREFIX}grammashop-${todayStamp()}.sql.gz`;
+const encryptedPath = path.join(workDir, "dump.sql.gz.gpg");
+const key = `${PREFIX}grammashop-${todayStamp()}.sql.gz.gpg`;
 
 try {
   await dumpToFile(filePath);
-  await upload(filePath, key);
+  await encryptFile(filePath, encryptedPath);
+  await upload(encryptedPath, key);
   console.log("backup: загружен", key);
   await applyRetention();
 } finally {
