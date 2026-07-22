@@ -1,8 +1,8 @@
-import { Link } from "react-router-dom";
 import { ORDER_STATUS_TRANSITIONS, type OrderStatus } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "../../lib/money";
 import { ScreenState } from "../../shop/ScreenState";
+import { AdminToolbar } from "../../nav/AdminToolbar";
 import { useSellerOrders, useUpdateOrderStatus } from "../../seller/useSellerOrders";
 
 // Заказы в продавцовской админке (см. CONCEPT.md#каталог-и-заказы,
@@ -61,17 +61,12 @@ export function SellerOrders() {
 
   return (
     <div className="min-h-dvh bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 flex items-center justify-between border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <div>
-          <h1 className="y2k-heading font-display text-lg text-tg-text">Заказы</h1>
-          {orders && <p className="text-sm text-tg-hint">{orders.length}</p>}
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/seller">Товары</Link>
-        </Button>
+      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <h1 className="y2k-heading font-display text-lg text-tg-text">Заказы</h1>
+        {orders && <p className="text-sm text-tg-hint">{orders.length}</p>}
       </header>
 
-      <main className="space-y-3 p-4">
+      <main className="space-y-3 p-4 pb-24">
         {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
           <ScreenState variant="inline" title="Не удалось загрузить заказы." />
@@ -134,6 +129,7 @@ export function SellerOrders() {
           </div>
         ))}
       </main>
+      <AdminToolbar />
     </div>
   );
 }

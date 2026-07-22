@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import type { SellerStatus, SubscriptionStatus, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
-import { useSession } from "../../auth/session-context";
 import { ScreenState } from "../../shop/ScreenState";
+import { AdminToolbar } from "../../nav/AdminToolbar";
 import {
   useGrantGrace,
   usePlatformSellers,
@@ -42,7 +41,6 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
 const DEFAULT_GRACE_MONTHS = 1;
 
 export function PlatformHome() {
-  const session = useSession();
   const { data: sellers, isLoading, isError } = usePlatformSellers();
   const updateStatus = useUpdateSellerStatus();
   const grantGrace = useGrantGrace();
@@ -97,19 +95,12 @@ export function PlatformHome() {
 
   return (
     <div className="min-h-dvh bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 flex items-center justify-between border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <div>
-          <h1 className="y2k-heading font-display text-lg text-tg-text">Продавцы</h1>
-          {sellers && <p className="text-sm text-tg-hint">{sellers.length}</p>}
-        </div>
-        {session.sellerId != null && (
-          <Button asChild variant="outline" size="sm">
-            <Link to="/seller">Мой магазин</Link>
-          </Button>
-        )}
+      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <h1 className="y2k-heading font-display text-lg text-tg-text">Продавцы</h1>
+        {sellers && <p className="text-sm text-tg-hint">{sellers.length}</p>}
       </header>
 
-      <main className="space-y-3 p-4">
+      <main className="space-y-3 p-4 pb-24">
         {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
           <ScreenState variant="inline" title="Не удалось загрузить продавцов." />
@@ -223,6 +214,7 @@ export function PlatformHome() {
           </div>
         ))}
       </main>
+      <AdminToolbar />
     </div>
   );
 }

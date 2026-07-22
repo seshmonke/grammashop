@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useSession } from "../../auth/session-context";
 import { formatPrice } from "../../lib/money";
+import { AdminToolbar } from "../../nav/AdminToolbar";
 import { ScreenState } from "../../shop/ScreenState";
 import { useSellerProfile } from "../../seller/useSellerProfile";
 import {
@@ -20,7 +20,6 @@ const FREE_PRODUCT_LIMIT = 30;
 const PREMIUM_PRODUCT_LIMIT = 3000;
 
 export function SellerHome() {
-  const session = useSession();
   const { data: products, isLoading, isError } = useSellerProducts();
   const { data: profile } = useSellerProfile();
   const productLimit =
@@ -66,28 +65,16 @@ export function SellerHome() {
             </p>
           )}
         </div>
-        {/* overflow-x-auto — кнопок стало 4 (плюс «Платформа» у админа-продавца),
-            в один ряд без прокрутки они не помещаются на узком экране и режутся
-            краем viewport, а не переносятся (flex без wrap). */}
-        <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4">
-          {session.isAdmin && (
-            <Button asChild variant="outline" size="sm" className="shrink-0">
-              <Link to="/platform">Платформа</Link>
-            </Button>
-          )}
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link to="/seller/profile">Настройки</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link to="/seller/orders">Заказы</Link>
-          </Button>
-          <Button asChild size="sm" className="shrink-0 bg-magenta text-white hover:bg-magenta/90">
+        {/* Разделы (Заказы/Настройки/Платформа) теперь в AdminToolbar внизу
+            экрана — здесь остаётся только основное действие экрана. */}
+        <div className="mt-2">
+          <Button asChild size="sm" className="bg-magenta text-white hover:bg-magenta/90">
             <Link to="/seller/products/new">Добавить</Link>
           </Button>
         </div>
       </header>
 
-      <main className="space-y-3 p-4">
+      <main className="space-y-3 p-4 pb-24">
         <div className="rounded-2xl bg-tg-surface p-4">
           <h2 className="font-medium text-tg-text">Заливка из Excel</h2>
           <p className="mt-1 text-sm text-tg-hint">
@@ -186,6 +173,7 @@ export function SellerHome() {
           );
         })}
       </main>
+      <AdminToolbar />
     </div>
   );
 }

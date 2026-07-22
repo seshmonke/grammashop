@@ -1,0 +1,75 @@
+import { Link, useLocation } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
+
+// Общий примитив floating toolbar (см.
+// DESIGN_SYSTEM.md#навигация--floating-toolbar): капсула (rounded-full,
+// не просто скруглённый прямоугольник) с «каплей» — подсветкой активного
+// раздела, перетекающей между вкладками при смене (translateX + spring-
+// like easing, без доп. библиотек анимации). Раскраска капли/активного
+// текста параметризована — у витрины и админок разные акценты (см.
+// TabBar.tsx / AdminToolbar.tsx).
+export type ToolbarTab = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: number;
+};
+
+export function FloatingToolbar({
+  tabs,
+  blobClassName,
+  activeTextClassName,
+}: {
+  tabs: ToolbarTab[];
+  blobClassName: string;
+  activeTextClassName: string;
+}) {
+  const location = useLocation();
+  const activeIndex = tabs.findIndex((t) => t.to === location.pathname);
+
+  // Меньше двух разделов — нечего листать, тулбар не несёт смысла (см.
+  // AdminToolbar: у чистого платформенного админа без своего магазина
+  // остался бы один пункт «Платформа»).
+  if (tabs.length < 2) return null;
+
+  return (
+    <nav
+      aria-label="Основная навигация"
+      className="tg-glass fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-30 rounded-full border border-tg-separator p-1 shadow-lg"
+    >
+      <div className="relative flex items-stretch">
+        {activeIndex >= 0 && (
+          <span
+            aria-hidden="true"
+            className={`absolute inset-y-0 rounded-full transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${blobClassName}`}
+            style={{
+              width: `${100 / tabs.length}%`,
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+          />
+        )}
+        {tabs.map(({ to, label, icon: Icon, badge }, index) => {
+          const active = index === activeIndex;
+          return (
+            <Link
+              key={to}
+              to={to}
+              aria-current={active ? "page" : undefined}
+              className={`relative z-10 flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-xs font-medium ${
+                active ? activeTextClassName : "text-tg-hint"
+              }`}
+            >
+              <Icon className="h-5 w-5" aria-hidden="true" />
+              {label}
+              {!!badge && badge > 0 && (
+                <span className="absolute right-1/4 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-ice-on-theme px-1 text-[10px] font-semibold tabular-nums text-white">
+                  {badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

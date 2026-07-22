@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import type { SellerProfile, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
 import { openExternalLink } from "../../lib/telegram";
 import { shopLink } from "../../lib/platform";
 import { ScreenState } from "../../shop/ScreenState";
+import { AdminToolbar } from "../../nav/AdminToolbar";
 import {
   usePaySubscription,
   useSellerProfile,
@@ -146,15 +146,12 @@ export function SellerProfile() {
   return (
     <div className="min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <Button asChild variant="outline" size="sm">
-          <Link to="/seller">Товары</Link>
-        </Button>
-        <h1 className="mt-1 y2k-heading font-display text-lg text-tg-text">
+        <h1 className="y2k-heading font-display text-lg text-tg-text">
           Настройки магазина
         </h1>
       </header>
 
-      <main className="space-y-3 p-4">
+      <main className="space-y-3 p-4 pb-24">
         {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
           <ScreenState variant="inline" title="Не удалось загрузить профиль." />
@@ -224,6 +221,7 @@ export function SellerProfile() {
           </>
         )}
       </main>
+      <AdminToolbar />
     </div>
   );
 }
