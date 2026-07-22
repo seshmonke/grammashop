@@ -89,3 +89,4 @@
 27. [UI оплаты подписки + heartbeat-мониторинг](27-subscription-payment-ui-heartbeat.md) — закрыт
 28. [Ревью дизайна витрины (волна 1)](28-storefront-design-review.md) — закрыт
 29. [Ревью дизайна админок (волна 2)](29-admin-design-review.md) — закрыт
+30. [Ревью дизайна и контента лендинга (волна 3)](30-landing-design-review.md) — состав зафиксирован, ждёт команды старта
