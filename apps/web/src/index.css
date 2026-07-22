@@ -55,6 +55,9 @@
      CTA на собственной заливке --magenta (белый текст на ней) это не
      затрагивает — там контраст самодостаточен и не зависит от темы клиента. */
   --magenta-on-theme: color-mix(in srgb, var(--magenta) 65%, var(--tg-text) 35%);
+  /* Тот же приём для фокус-кольца (см. docs/design/DESIGN_SYSTEM.md#реализация):
+     сырой --ice обводкой на светлой теме Telegram даёт слишком бледный контур. */
+  --ice-on-theme: color-mix(in srgb, var(--ice) 65%, var(--tg-text) 35%);
 
   /* Флюидная сетка каталога (см.
      STACK.md#сетка-каталога--кросс-платформенная-вёрстка): --card-min
@@ -98,6 +101,7 @@
   --color-magenta-deep: var(--magenta-deep);
   --color-magenta-on-theme: var(--magenta-on-theme);
   --color-ice: var(--ice);
+  --color-ice-on-theme: var(--ice-on-theme);
   --color-brand-rule: var(--brand-rule);
   --font-display: var(--display);
 }
@@ -124,7 +128,7 @@ body {
    ссылки, кнопки) — акцентом темы клиента. */
 a:focus-visible,
 button:focus-visible {
-  outline: 2px solid var(--tg-accent);
+  outline: 2px solid var(--ice-on-theme);
   outline-offset: 2px;
   border-radius: 8px;
 }

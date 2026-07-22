@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import type { ProductImage, ShopVariant } from "@grammashop/shared";
 import { resolveSellerId } from "../../shop/seller-id";
 import { useShopCatalog } from "../../shop/useShopCatalog";
+import { ScreenState } from "../../shop/ScreenState";
 import { formatPrice } from "../../lib/money";
 import { discountPercent, hasDiscount, isVariantOutOfStock } from "../../shop/pricing";
 import { useCart } from "../../cart/cart-context";
@@ -100,7 +101,9 @@ function VariantRow({
       <div className="flex items-center gap-3 whitespace-nowrap">
         <span className="flex items-baseline gap-2 tabular-nums">
           {soldOut && (
-            <span className="text-xs text-tg-destructive">нет в наличии</span>
+            <span className="rounded-full bg-tg-surface px-2 py-0.5 text-xs text-tg-hint">
+              нет в наличии
+            </span>
           )}
           {discounted && (
             <span className="y2k-cta-glow rounded-full bg-magenta px-1.5 py-0.5 text-xs font-medium text-white">
@@ -199,9 +202,13 @@ export function ProductDetail() {
 
       <main className="p-4 pb-24">
         {isLoading ? (
-          <p className="py-16 text-center text-tg-hint">Загрузка…</p>
+          <ScreenState variant="inline" title="Загрузка…" />
         ) : isError || !product || !data ? (
-          <p className="py-16 text-center text-tg-hint">Товар не найден.</p>
+          <ScreenState
+            variant="inline"
+            title="Товар не найден."
+            action={{ to: "/", label: "Вернуться в каталог" }}
+          />
         ) : (
           <>
             <ImageCarousel images={product.images} />

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { formatPrice } from "../../lib/money";
 import { useCart } from "../../cart/cart-context";
 import { cartTotalKopecks } from "../../cart/cart-reducer";
+import { ScreenState } from "../../shop/ScreenState";
 
 // Экран корзины (см. STACK.md#роутинг, карта экранов: каталог → карточка →
 // корзина → чекаут). Правка количества и удаление позиций; оформление —
@@ -10,17 +11,17 @@ export function CartPage() {
   const { state, dispatch } = useCart();
 
   return (
-    <div className="min-h-dvh bg-tg-bg">
+    <div className="y2k-scanlines min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <Link to="/" className="text-tg-link">
           ← Назад
         </Link>
-        <h1 className="mt-1 text-lg font-semibold text-tg-text">Корзина</h1>
+        <h1 className="y2k-heading font-display mt-1 text-lg text-tg-text">Корзина</h1>
       </header>
 
       <main className="p-4 pb-28">
         {state.items.length === 0 ? (
-          <p className="py-16 text-center text-tg-hint">Корзина пуста.</p>
+          <ScreenState variant="inline" title="Корзина пуста." action={{ to: "/", label: "В магазин" }} />
         ) : (
           <div className="space-y-3">
             {state.items.map((item) => (
@@ -81,7 +82,7 @@ export function CartPage() {
                       +
                     </button>
                   </div>
-                  <span className="font-medium text-tg-text tabular-nums">
+                  <span className="y2k-price-glow font-medium text-magenta-on-theme tabular-nums">
                     {formatPrice(item.priceKopecks * item.quantity)}
                   </span>
                 </div>
@@ -95,13 +96,13 @@ export function CartPage() {
         <div className="tg-glass fixed inset-x-0 bottom-0 z-20 border-t border-tg-separator px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-tg-hint">Итого</span>
-            <span className="text-lg font-semibold text-tg-text tabular-nums">
+            <span className="y2k-price-glow text-lg font-semibold text-magenta-on-theme tabular-nums">
               {formatPrice(cartTotalKopecks(state))}
             </span>
           </div>
           <Link
             to="/checkout"
-            className="block rounded-2xl bg-tg-accent py-3 text-center font-medium text-tg-accent-text"
+            className="y2k-cta-glow block rounded-2xl bg-magenta py-3 text-center font-medium text-white"
           >
             Оформить заказ
           </Link>
