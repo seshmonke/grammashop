@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
+import { fieldBorderClass } from "../../lib/field-styles";
 import { requestContactPhone } from "../../lib/telegram";
 import { useRegisterSeller } from "../../seller/useSellerRegistration";
+import { validateRegisterForm, type RegisterFormValues } from "../../seller/validate-register-form";
+
+type TouchableField = keyof RegisterFormValues;
 
 // Форма регистрации магазина до оплаты подписки (см.
 // CONCEPT.md#оплата-подписки-продавцом, Спринт 21). Успех переводит в
@@ -16,6 +21,16 @@ export function RegisterForm() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("+7");
   const [consent, setConsent] = useState(false);
+  const [touched, setTouched] = useState<Partial<Record<TouchableField, boolean>>>({});
+
+  // Живая валидация — та же Zod-схема, что и бэк (см.
+  // validate-register-form.ts). Ошибки показываются только для тронутых
+  // полей (blur), см. docs/design/DESIGN_SYSTEM.md#формы.
+  const errors = validateRegisterForm({ shopName, fullName, phone, consent });
+
+  function touch(field: TouchableField) {
+    setTouched((t) => (t[field] ? t : { ...t, [field]: true }));
+  }
 
   useEffect(() => {
     // Нативный попап Telegram — номер из аккаунта вместо ручного ввода.
@@ -33,16 +48,12 @@ export function RegisterForm() {
     return <Navigate to="/seller" replace />;
   }
 
-  const canSubmit =
-    shopName.trim().length > 0 &&
-    fullName.trim().length > 0 &&
-    phone.trim().length > 0 &&
-    consent &&
-    !registerSeller.isPending;
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (Object.keys(errors).length > 0) {
+      setTouched({ shopName: true, fullName: true, phone: true, consent: true });
+      return;
+    }
     await registerSeller.mutateAsync({
       shopName: shopName.trim(),
       fullName: fullName.trim(),
@@ -83,8 +94,16 @@ export function RegisterForm() {
               id="shopName"
               value={shopName}
               onChange={(e) => setShopName(e.target.value)}
-              className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
+              onBlur={() => touch("shopName")}
+              aria-invalid={touched.shopName && errors.shopName ? true : undefined}
+              aria-describedby={errors.shopName ? "shopName-error" : undefined}
+              className={`w-full rounded-lg border bg-tg-surface px-3 py-2 text-tg-text ${fieldBorderClass(!!touched.shopName, !!errors.shopName)}`}
             />
+            {touched.shopName && errors.shopName && (
+              <p id="shopName-error" className="mt-1 text-sm text-tg-destructive">
+                {errors.shopName}
+              </p>
+            )}
           </div>
 
           <div>
@@ -95,8 +114,16 @@ export function RegisterForm() {
               id="fullName"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
+              onBlur={() => touch("fullName")}
+              aria-invalid={touched.fullName && errors.fullName ? true : undefined}
+              aria-describedby={errors.fullName ? "fullName-error" : undefined}
+              className={`w-full rounded-lg border bg-tg-surface px-3 py-2 text-tg-text ${fieldBorderClass(!!touched.fullName, !!errors.fullName)}`}
             />
+            {touched.fullName && errors.fullName && (
+              <p id="fullName-error" className="mt-1 text-sm text-tg-destructive">
+                {errors.fullName}
+              </p>
+            )}
           </div>
 
           <div>
@@ -109,8 +136,16 @@ export function RegisterForm() {
               placeholder="+7XXXXXXXXXX"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
+              onBlur={() => touch("phone")}
+              aria-invalid={touched.phone && errors.phone ? true : undefined}
+              aria-describedby={errors.phone ? "phone-error" : undefined}
+              className={`w-full rounded-lg border bg-tg-surface px-3 py-2 text-tg-text ${fieldBorderClass(!!touched.phone, !!errors.phone)}`}
             />
+            {touched.phone && errors.phone && (
+              <p id="phone-error" className="mt-1 text-sm text-tg-destructive">
+                {errors.phone}
+              </p>
+            )}
           </div>
 
           <div>
@@ -118,11 +153,18 @@ export function RegisterForm() {
               <input
                 type="checkbox"
                 checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
+                onChange={(e) => {
+                  setConsent(e.target.checked);
+                  touch("consent");
+                }}
+                aria-invalid={touched.consent && errors.consent ? true : undefined}
                 className="mt-0.5"
               />
               Согласен(на) на обработку персональных данных
             </label>
+            {touched.consent && errors.consent && (
+              <p className="mt-1 text-sm text-tg-destructive">{errors.consent}</p>
+            )}
           </div>
 
           {registerSeller.isError && (
@@ -131,13 +173,13 @@ export function RegisterForm() {
             </p>
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={!canSubmit}
-            className="w-full rounded-2xl bg-magenta py-3 text-center font-medium text-white disabled:opacity-40"
+            disabled={registerSeller.isPending}
+            className="w-full rounded-2xl bg-magenta py-3 text-white hover:bg-magenta/90"
           >
             {registerSeller.isPending ? "Запускаем…" : "Запустить магазин"}
-          </button>
+          </Button>
         </form>
       </main>
     </div>

@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { fieldBorderClass } from "../../lib/field-styles";
 import { rublesToKopecks, kopecksToRubles } from "../../lib/money";
+import { ScreenState } from "../../shop/ScreenState";
 import { diffVariants, type VariantFormRow } from "../../seller/variant-diff";
 import {
   useAddProductImage,
@@ -54,6 +56,42 @@ function toDraftVariant(v: {
   };
 }
 
+type VariantFieldErrors = Partial<Record<keyof DraftVariant, string>>;
+
+// Блюр-валидация варианта (канон — см. docs/design/DESIGN_SYSTEM.md#формы):
+// та же логика допустимости, что и в parseDraftVariant/API-схеме
+// (packages/shared/src/schemas/products.ts), но с ошибкой на конкретное
+// поле вместо общего «невалидно».
+function variantErrors(d: DraftVariant): VariantFieldErrors {
+  const errors: VariantFieldErrors = {};
+  if (!d.name.trim()) errors.name = "Укажите название варианта";
+
+  const price = Number(d.priceRub);
+  if (d.priceRub.trim() === "") {
+    errors.priceRub = "Укажите цену";
+  } else if (!Number.isFinite(price) || price <= 0) {
+    errors.priceRub = "Цена должна быть больше нуля";
+  }
+
+  if (d.oldPriceRub.trim() !== "") {
+    const oldPrice = Number(d.oldPriceRub);
+    if (!Number.isFinite(oldPrice) || oldPrice <= 0) {
+      errors.oldPriceRub = "Введите корректную цену";
+    } else if (Number.isFinite(price) && price > 0 && oldPrice < price) {
+      errors.oldPriceRub = "Базовая цена не может быть ниже цены со скидкой";
+    }
+  }
+
+  if (d.stock.trim() !== "") {
+    const stock = Number(d.stock);
+    if (!Number.isFinite(stock) || stock < 0) {
+      errors.stock = "Остаток не может быть отрицательным";
+    }
+  }
+
+  return errors;
+}
+
 function parseDraftVariant(d: DraftVariant): VariantFormRow | null {
   const priceRub = Number(d.priceRub);
   if (!d.name.trim() || !Number.isFinite(priceRub) || priceRub <= 0) {
@@ -78,7 +116,7 @@ export function ProductForm() {
   const isEdit = productId != null;
   const navigate = useNavigate();
 
-  const { data: products } = useSellerProducts();
+  const { data: products, isLoading: productsLoading } = useSellerProducts();
   const existing = isEdit
     ? products?.find((p) => String(p.id) === productId)
     : undefined;
@@ -90,6 +128,10 @@ export function ProductForm() {
   );
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(!isEdit);
+  const [nameTouched, setNameTouched] = useState(false);
+  const [variantTouched, setVariantTouched] = useState<
+    Record<number, Partial<Record<keyof DraftVariant, boolean>>>
+  >({});
 
   // existing появляется асинхронно (список ещё грузится) — заполняем форму
   // один раз, когда данные подъехали, не перетирая правки пользователя.
@@ -119,6 +161,22 @@ export function ProductForm() {
     updateVariant.isPending ||
     deleteVariant.isPending;
 
+  if (isEdit && !existing) {
+    return (
+      <div className="min-h-dvh bg-tg-bg">
+        {productsLoading ? (
+          <ScreenState variant="full" title="Загрузка…" />
+        ) : (
+          <ScreenState
+            variant="full"
+            title="Товар не найден"
+            action={{ to: "/seller", label: "К товарам" }}
+          />
+        )}
+      </div>
+    );
+  }
+
   function updateVariantField(
     index: number,
     field: keyof DraftVariant,
@@ -129,6 +187,13 @@ export function ProductForm() {
     );
   }
 
+  function touchVariantField(index: number, field: keyof DraftVariant) {
+    setVariantTouched((prev) => ({
+      ...prev,
+      [index]: { ...prev[index], [field]: true },
+    }));
+  }
+
   function addVariantRow() {
     if (variants.length >= MAX_VARIANTS) return;
     setVariants((prev) => [...prev, emptyDraftVariant()]);
@@ -137,6 +202,15 @@ export function ProductForm() {
   function removeVariantRow(index: number) {
     if (variants.length <= 1) return;
     setVariants((prev) => prev.filter((_, i) => i !== index));
+    setVariantTouched((prev) => {
+      const next: typeof prev = {};
+      for (const [key, value] of Object.entries(prev)) {
+        const i = Number(key);
+        if (i < index) next[i] = value;
+        else if (i > index) next[i - 1] = value;
+      }
+      return next;
+    });
   }
 
   async function handlePhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -154,6 +228,7 @@ export function ProductForm() {
 
   async function handlePhotoDelete(imageId: number) {
     if (!existing) return;
+    if (!confirm("Удалить фото? Это действие необратимо.")) return;
     setImageError(null);
     try {
       await deleteImage.mutateAsync({ productId: existing.id, imageId });
@@ -179,26 +254,21 @@ export function ProductForm() {
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
-      setError("Укажите название товара");
+    const hasNameError = !name.trim();
+    const perVariantErrors = variants.map(variantErrors);
+    if (hasNameError || perVariantErrors.some((e) => Object.keys(e).length > 0)) {
+      setNameTouched(true);
+      setVariantTouched(
+        Object.fromEntries(
+          variants.map((_, i) => [
+            i,
+            { name: true, priceRub: true, oldPriceRub: true, stock: true },
+          ]),
+        ),
+      );
       return;
     }
-    const parsedVariants = variants.map(parseDraftVariant);
-    if (parsedVariants.some((v) => v === null)) {
-      setError("У каждого варианта должны быть название и цена больше нуля");
-      return;
-    }
-    const validVariants = parsedVariants as VariantFormRow[];
-    // Базовая цена — это цена «до скидки», она не может быть ниже цены со
-    // скидкой: иначе получается не скидка, а надбавка (см. TASKS.md).
-    if (
-      validVariants.some(
-        (v) => v.oldPriceKopecks != null && v.oldPriceKopecks < v.priceKopecks,
-      )
-    ) {
-      setError("Базовая цена не может быть ниже цены со скидкой");
-      return;
-    }
+    const validVariants = variants.map(parseDraftVariant) as VariantFormRow[];
 
     try {
       if (!isEdit) {
@@ -234,7 +304,10 @@ export function ProductForm() {
   return (
     <div className="min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <h1 className="y2k-heading font-display text-lg text-tg-text">
+        <Button asChild variant="outline" size="sm">
+          <Link to="/seller">Товары</Link>
+        </Button>
+        <h1 className="mt-1 y2k-heading font-display text-lg text-tg-text">
           {isEdit ? "Изменить товар" : "Новый товар"}
         </h1>
       </header>
@@ -249,8 +322,16 @@ export function ProductForm() {
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-tg-separator bg-tg-surface px-3 py-2 text-tg-text"
+              onBlur={() => setNameTouched(true)}
+              aria-invalid={nameTouched && !name.trim() ? true : undefined}
+              aria-describedby={!name.trim() ? "name-error" : undefined}
+              className={`w-full rounded-lg border bg-tg-surface px-3 py-2 text-tg-text ${fieldBorderClass(nameTouched, !name.trim())}`}
             />
+            {nameTouched && !name.trim() && (
+              <p id="name-error" className="mt-1 text-sm text-tg-destructive">
+                Укажите название товара
+              </p>
+            )}
           </div>
 
           <div>
@@ -258,7 +339,7 @@ export function ProductForm() {
               className="mb-1 block text-sm text-tg-hint"
               htmlFor="description"
             >
-              Описание
+              Описание (необязательно)
             </label>
             <textarea
               id="description"
@@ -306,7 +387,7 @@ export function ProductForm() {
                         aria-label="Удалить фото"
                         disabled={deleteImage.isPending}
                         onClick={() => handlePhotoDelete(image.id)}
-                        className="text-sm text-tg-destructive disabled:opacity-40"
+                        className="text-sm text-tg-text disabled:opacity-40"
                       >
                         ✕
                       </button>
@@ -369,56 +450,118 @@ export function ProductForm() {
             </div>
 
             <div className="space-y-3">
-              {variants.map((v, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-2 gap-2 rounded-lg border border-tg-separator p-3"
-                >
-                  <input
-                    placeholder="Название варианта"
-                    value={v.name}
-                    onChange={(e) =>
-                      updateVariantField(i, "name", e.target.value)
-                    }
-                    className="col-span-2 rounded-md border border-tg-separator bg-tg-surface px-2 py-1.5 text-sm text-tg-text"
-                  />
-                  <input
-                    placeholder="Цена со скидкой, ₽"
-                    inputMode="decimal"
-                    value={v.priceRub}
-                    onChange={(e) =>
-                      updateVariantField(i, "priceRub", e.target.value)
-                    }
-                    className="rounded-md border border-tg-separator bg-tg-surface px-2 py-1.5 text-sm text-tg-text"
-                  />
-                  <input
-                    placeholder="Базовая цена, ₽ (необязательно)"
-                    inputMode="decimal"
-                    value={v.oldPriceRub}
-                    onChange={(e) =>
-                      updateVariantField(i, "oldPriceRub", e.target.value)
-                    }
-                    className="rounded-md border border-tg-separator bg-tg-surface px-2 py-1.5 text-sm text-tg-text"
-                  />
-                  <input
-                    placeholder="Остаток (пусто — не считаем)"
-                    inputMode="numeric"
-                    value={v.stock}
-                    onChange={(e) =>
-                      updateVariantField(i, "stock", e.target.value)
-                    }
-                    className="col-span-2 rounded-md border border-tg-separator bg-tg-surface px-2 py-1.5 text-sm text-tg-text"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeVariantRow(i)}
-                    disabled={variants.length <= 1}
-                    className="col-span-2 text-left text-sm text-tg-destructive disabled:opacity-40"
+              {variants.map((v, i) => {
+                const vErrors = variantErrors(v);
+                const vTouched = variantTouched[i] ?? {};
+                return (
+                  <div
+                    key={i}
+                    className="space-y-2 rounded-lg border border-tg-separator p-3"
                   >
-                    Убрать вариант
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <label
+                        className="mb-1 block text-xs text-tg-hint"
+                        htmlFor={`variant-${i}-name`}
+                      >
+                        Название варианта
+                      </label>
+                      <input
+                        id={`variant-${i}-name`}
+                        value={v.name}
+                        onChange={(e) =>
+                          updateVariantField(i, "name", e.target.value)
+                        }
+                        onBlur={() => touchVariantField(i, "name")}
+                        aria-invalid={vTouched.name && vErrors.name ? true : undefined}
+                        className={`w-full rounded-md border bg-tg-surface px-2 py-1.5 text-sm text-tg-text ${fieldBorderClass(!!vTouched.name, !!vErrors.name)}`}
+                      />
+                      {vTouched.name && vErrors.name && (
+                        <p className="mt-1 text-xs text-tg-destructive">{vErrors.name}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        className="mb-1 block text-xs text-tg-hint"
+                        htmlFor={`variant-${i}-price`}
+                      >
+                        Цена со скидкой, ₽
+                      </label>
+                      <input
+                        id={`variant-${i}-price`}
+                        inputMode="decimal"
+                        value={v.priceRub}
+                        onChange={(e) =>
+                          updateVariantField(i, "priceRub", e.target.value)
+                        }
+                        onBlur={() => touchVariantField(i, "priceRub")}
+                        aria-invalid={vTouched.priceRub && vErrors.priceRub ? true : undefined}
+                        className={`w-full rounded-md border bg-tg-surface px-2 py-1.5 text-sm text-tg-text ${fieldBorderClass(!!vTouched.priceRub, !!vErrors.priceRub)}`}
+                      />
+                      {vTouched.priceRub && vErrors.priceRub && (
+                        <p className="mt-1 text-xs text-tg-destructive">{vErrors.priceRub}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        className="mb-1 block text-xs text-tg-hint"
+                        htmlFor={`variant-${i}-old-price`}
+                      >
+                        Базовая цена, ₽ (необязательно)
+                      </label>
+                      <input
+                        id={`variant-${i}-old-price`}
+                        inputMode="decimal"
+                        value={v.oldPriceRub}
+                        onChange={(e) =>
+                          updateVariantField(i, "oldPriceRub", e.target.value)
+                        }
+                        onBlur={() => touchVariantField(i, "oldPriceRub")}
+                        aria-invalid={vTouched.oldPriceRub && vErrors.oldPriceRub ? true : undefined}
+                        className={`w-full rounded-md border bg-tg-surface px-2 py-1.5 text-sm text-tg-text ${fieldBorderClass(!!vTouched.oldPriceRub, !!vErrors.oldPriceRub)}`}
+                      />
+                      {vTouched.oldPriceRub && vErrors.oldPriceRub && (
+                        <p className="mt-1 text-xs text-tg-destructive">{vErrors.oldPriceRub}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        className="mb-1 block text-xs text-tg-hint"
+                        htmlFor={`variant-${i}-stock`}
+                      >
+                        Остаток (необязательно, пусто — не считаем)
+                      </label>
+                      <input
+                        id={`variant-${i}-stock`}
+                        inputMode="numeric"
+                        value={v.stock}
+                        onChange={(e) =>
+                          updateVariantField(i, "stock", e.target.value)
+                        }
+                        onBlur={() => touchVariantField(i, "stock")}
+                        aria-invalid={vTouched.stock && vErrors.stock ? true : undefined}
+                        className={`w-full rounded-md border bg-tg-surface px-2 py-1.5 text-sm text-tg-text ${fieldBorderClass(!!vTouched.stock, !!vErrors.stock)}`}
+                      />
+                      {vTouched.stock && vErrors.stock && (
+                        <p className="mt-1 text-xs text-tg-destructive">{vErrors.stock}</p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeVariantRow(i)}
+                      disabled={variants.length <= 1}
+                      className="w-full"
+                    >
+                      Убрать вариант
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

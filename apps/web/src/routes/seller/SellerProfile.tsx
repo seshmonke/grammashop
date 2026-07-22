@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
 import { openExternalLink } from "../../lib/telegram";
 import { shopLink } from "../../lib/platform";
+import { ScreenState } from "../../shop/ScreenState";
 import {
   usePaySubscription,
   useSellerProfile,
@@ -145,18 +146,18 @@ export function SellerProfile() {
   return (
     <div className="min-h-dvh bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <Link to="/seller" className="text-tg-link">
-          ← Товары
-        </Link>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/seller">Товары</Link>
+        </Button>
         <h1 className="mt-1 y2k-heading font-display text-lg text-tg-text">
           Настройки магазина
         </h1>
       </header>
 
       <main className="space-y-3 p-4">
-        {isLoading && <p className="py-16 text-center text-tg-hint">Загрузка…</p>}
+        {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
-          <p className="py-16 text-center text-tg-hint">Не удалось загрузить профиль.</p>
+          <ScreenState variant="inline" title="Не удалось загрузить профиль." />
         )}
 
         {profile && (
@@ -179,7 +180,7 @@ export function SellerProfile() {
 
               <div>
                 <label className="mb-1 block text-sm text-tg-hint" htmlFor="shopDescription">
-                  Описание
+                  Описание (необязательно)
                 </label>
                 <textarea
                   id="shopDescription"
@@ -192,7 +193,7 @@ export function SellerProfile() {
 
               <div>
                 <label className="mb-1 block text-sm text-tg-hint" htmlFor="paymentDetails">
-                  Реквизиты для перевода (Free)
+                  Реквизиты для перевода (Free, необязательно)
                 </label>
                 <textarea
                   id="paymentDetails"
@@ -209,7 +210,7 @@ export function SellerProfile() {
                 </p>
               )}
               {updateProfile.isSuccess && (
-                <p className="text-sm text-emerald-500">Сохранено</p>
+                <p className="text-sm text-tg-success">Сохранено</p>
               )}
 
               <Button

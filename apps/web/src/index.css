@@ -15,6 +15,14 @@
   --tg-link: var(--tg-theme-link-color, var(--tg-accent));
   --tg-separator: var(--tg-theme-section-separator-color, rgba(0, 0, 0, 0.08));
   --tg-destructive: var(--tg-theme-destructive-text-color, #e5484d);
+  /* Telegram themeParams не даёт токена под «успех» (только bg/text/hint/
+     button/link/destructive) — фиксированное значение, не привязанное к
+     теме клиента, как и --tg-destructive не привязан. Значение — то же,
+     что уже используется в canon-реализации живой валидации формы
+     (CheckoutPage.tsx: зелёная обводка валидного поля), закреплено сюда
+     токеном, чтобы не расходиться по хардкоженным hex (docs/design/DESIGN_SYSTEM.md#палитра,
+     Спринт 29). */
+  --tg-success: #10b981;
 
   /* shadcn-токены (админки — плоско, без темы клиента) оставлены как были. */
   --background: oklch(1 0 0);
@@ -79,6 +87,7 @@
   --color-tg-link: var(--tg-link);
   --color-tg-separator: var(--tg-separator);
   --color-tg-destructive: var(--tg-destructive);
+  --color-tg-success: var(--tg-success);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);

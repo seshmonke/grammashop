@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { SellerStatus, SubscriptionStatus, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
+import { ScreenState } from "../../shop/ScreenState";
 import {
   useGrantGrace,
   usePlatformSellers,
@@ -92,12 +93,12 @@ export function PlatformHome() {
       </header>
 
       <main className="space-y-3 p-4">
-        {isLoading && <p className="py-16 text-center text-tg-hint">Загрузка…</p>}
+        {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
-          <p className="py-16 text-center text-tg-hint">Не удалось загрузить продавцов.</p>
+          <ScreenState variant="inline" title="Не удалось загрузить продавцов." />
         )}
         {sellers?.length === 0 && (
-          <p className="py-16 text-center text-tg-hint">Пока нет ни одного продавца.</p>
+          <ScreenState variant="inline" title="Пока нет ни одного продавца." />
         )}
         {sellers?.map((seller) => (
           <div key={seller.id} className="rounded-2xl bg-tg-surface p-4">

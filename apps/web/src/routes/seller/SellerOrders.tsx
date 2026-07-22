@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ORDER_STATUS_TRANSITIONS, type OrderStatus } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "../../lib/money";
+import { ScreenState } from "../../shop/ScreenState";
 import { useSellerOrders, useUpdateOrderStatus } from "../../seller/useSellerOrders";
 
 // Заказы в продавцовской админке (см. CONCEPT.md#каталог-и-заказы,
@@ -71,12 +72,12 @@ export function SellerOrders() {
       </header>
 
       <main className="space-y-3 p-4">
-        {isLoading && <p className="py-16 text-center text-tg-hint">Загрузка…</p>}
+        {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
-          <p className="py-16 text-center text-tg-hint">Не удалось загрузить заказы.</p>
+          <ScreenState variant="inline" title="Не удалось загрузить заказы." />
         )}
         {orders?.length === 0 && (
-          <p className="py-16 text-center text-tg-hint">Пока нет ни одного заказа.</p>
+          <ScreenState variant="inline" title="Пока нет ни одного заказа." />
         )}
         {orders?.map((order) => (
           <div key={order.id} className="rounded-2xl bg-tg-surface p-4">

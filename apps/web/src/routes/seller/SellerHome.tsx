@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
 import { formatPrice } from "../../lib/money";
+import { ScreenState } from "../../shop/ScreenState";
 import { useSellerProfile } from "../../seller/useSellerProfile";
 import {
   useDeleteProduct,
@@ -134,18 +135,16 @@ export function SellerHome() {
           )}
         </div>
 
-        {isLoading && (
-          <p className="py-16 text-center text-tg-hint">Загрузка…</p>
-        )}
+        {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
-          <p className="py-16 text-center text-tg-hint">
-            Не удалось загрузить товары.
-          </p>
+          <ScreenState variant="inline" title="Не удалось загрузить товары." />
         )}
         {products?.length === 0 && (
-          <p className="py-16 text-center text-tg-hint">
-            Пока нет ни одной карточки товара.
-          </p>
+          <ScreenState
+            variant="inline"
+            title="Пока нет ни одной карточки товара."
+            action={{ to: "/seller/products/new", label: "Добавить товар" }}
+          />
         )}
         {products?.map((product) => {
           const prices = product.variants.map((v) => v.priceKopecks);

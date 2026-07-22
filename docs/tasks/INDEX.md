@@ -88,4 +88,4 @@
 26. [Биллинг-движок подписки на ЮKassa (sandbox)](26-yookassa-billing-engine.md) — закрыт
 27. [UI оплаты подписки + heartbeat-мониторинг](27-subscription-payment-ui-heartbeat.md) — закрыт
 28. [Ревью дизайна витрины (волна 1)](28-storefront-design-review.md) — закрыт
-29. [Ревью дизайна админок (волна 2)](29-admin-design-review.md) — состав зафиксирован, ждёт команды старта
+29. [Ревью дизайна админок (волна 2)](29-admin-design-review.md) — закрыт
