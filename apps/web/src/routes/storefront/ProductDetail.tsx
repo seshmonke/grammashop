@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import type { ProductImage, ShopVariant } from "@grammashop/shared";
 import { resolveSellerId } from "../../shop/seller-id";
 import { useShopCatalog } from "../../shop/useShopCatalog";
@@ -7,6 +7,7 @@ import { ScreenState } from "../../shop/ScreenState";
 import { formatPrice } from "../../lib/money";
 import { discountPercent, hasDiscount, isVariantOutOfStock } from "../../shop/pricing";
 import { useCart } from "../../cart/cart-context";
+import { TabBar } from "../../nav/TabBar";
 
 // Галерея карточки — свайп-карусель с точками-индикаторами (см.
 // STACK.md#пайплайн-фото-товара-спринт-16-расширено-спринтом-20), без
@@ -193,13 +194,10 @@ export function ProductDetail() {
 
   return (
     <div className="y2k-scanlines min-h-dvh bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <Link to="/" className="text-tg-link">
-          ← Назад
-        </Link>
-      </header>
-
-      <main className="p-4">
+      {/* Кнопка "назад" убрана — навигация теперь через TabBar внизу
+          (см. DESIGN_SYSTEM.md#навигация--floating-toolbar): "Каталог"
+          возвращает на витрину, "Корзина" ведёт в корзину. */}
+      <main className="px-4 pb-28 pt-[calc(1rem+env(safe-area-inset-top))]">
         {isLoading ? (
           <ScreenState variant="inline" title="Загрузка…" />
         ) : isError || !product || !data ? (
@@ -233,6 +231,7 @@ export function ProductDetail() {
           </>
         )}
       </main>
+      <TabBar />
     </div>
   );
 }
