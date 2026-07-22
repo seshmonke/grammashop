@@ -129,8 +129,9 @@ header.site nav a:focus-visible {
 /* Хиро */
 
 .hero {
-  padding: 48px 0 40px;
+  padding: 8px 0 40px;
   text-align: center;
+  border-top: none;
 }
 
 .hero h1 {

@@ -36,15 +36,18 @@ function SloganCarousel() {
 // регистрации внутри ТМА.
 export function Fork() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
-      <h1 className="y2k-heading font-display text-2xl text-tg-text">
-        grammashop
+    <div className="y2k-scanlines flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
+      <h1 className="y2k-heading flex items-center gap-2 font-display text-2xl">
+        <img src="/logo.svg" alt="" className="h-7 w-7" />
+        <span className="wordmark-gramma">gramma</span>
+        <span className="wordmark-sep">┃</span>
+        <span className="text-chrome">shop</span>
       </h1>
       <SloganCarousel />
       <div className="mt-4 flex w-full max-w-xs flex-col gap-3">
         <Link
           to="/register"
-          className="rounded-2xl bg-magenta py-3 text-center font-medium text-white"
+          className="y2k-cta-glow rounded-2xl bg-magenta py-3 text-center font-medium text-white"
         >
           Запустить магазин
         </Link>

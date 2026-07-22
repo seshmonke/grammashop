@@ -176,6 +176,26 @@ button:focus-visible {
   );
 }
 
+/* Лок-ап вордмарка (см. DESIGN_SYSTEM.md#символ-и-логотип) — тот же приём,
+   что и в шапке лендинга (public/landing.css .brand .wordmark), здесь же
+   переиспользован на auth/Fork.tsx, единственном экране apps/web, где
+   показывается название платформы, а не заголовок раздела. */
+.wordmark-gramma {
+  background: linear-gradient(
+    180deg,
+    var(--chrome-light),
+    var(--chrome) 45%,
+    var(--chrome-dark)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.wordmark-sep {
+  color: var(--magenta);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--magenta) 60%, transparent);
+}
+
 /* Смена слогана на экране-развилке (auth/Fork.tsx) — тот же слоган-лист,
    что и в hero-карусели лендинга (public/landing.html), другой механизм
    (React state + fade), не CSS @keyframes: один экран, не строчная лента. */
