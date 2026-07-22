@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import { createOrderResponseSchema, sellerOrderListResponseSchema } from "@grammashop/shared";
@@ -66,12 +67,18 @@ async function req(
   });
 }
 
-const validBuyer = {
-  buyerFullName: "Иван Иванов",
-  buyerPhone: "+79990001122",
-  buyerAddress: "Москва, ул. Примерная, 1",
-  consent: true as const,
-};
+// Функция, не константа: idempotencyKey — UUID одной попытки оформления
+// (см. Спринт 31), у каждого теста должен быть свой, если только тест не
+// проверяет повтор с тем же ключом намеренно.
+function validBuyer() {
+  return {
+    buyerFullName: "Иван Иванов",
+    buyerPhone: "+79990001122",
+    buyerAddress: "Москва, ул. Примерная, 1",
+    consent: true as const,
+    idempotencyKey: randomUUID(),
+  };
+}
 
 describe("POST /shop/:sellerId/orders", () => {
   beforeEach(async () => {
@@ -96,7 +103,7 @@ describe("POST /shop/:sellerId/orders", () => {
   it("без JWT → 401", async () => {
     const app = buildApp();
     const res = await req(app, "/shop/1/orders", undefined, {
-      ...validBuyer,
+      ...validBuyer(),
       items: [{ variantId: 1, quantity: 1 }],
     });
     expect(res.statusCode).toBe(401);
@@ -110,7 +117,7 @@ describe("POST /shop/:sellerId/orders", () => {
     const token = await tokenFor(app);
 
     const res = await req(app, `/shop/${sellerId}/orders`, token, {
-      ...validBuyer,
+      ...validBuyer(),
       items: [{ variantId, quantity: 2 }],
     });
 
@@ -147,6 +154,49 @@ describe("POST /shop/:sellerId/orders", () => {
     await app.close();
   });
 
+  it("повтор с тем же idempotencyKey — тот же заказ, остаток не списывается дважды", async () => {
+    const app = buildApp();
+    const sellerId = await seedSeller();
+    const { variantId } = await seedProductWithVariant(sellerId, { stock: 5 });
+    const token = await tokenFor(app);
+    const body = { ...validBuyer(), items: [{ variantId, quantity: 2 }] };
+
+    const first = await req(app, `/shop/${sellerId}/orders`, token, body);
+    const second = await req(app, `/shop/${sellerId}/orders`, token, body);
+
+    expect(first.statusCode).toBe(201);
+    expect(second.statusCode).toBe(201);
+    const firstOrder = createOrderResponseSchema.parse(first.json());
+    const secondOrder = createOrderResponseSchema.parse(second.json());
+    expect(secondOrder.id).toBe(firstOrder.id);
+
+    const [variant] = await db
+      .select({ stock: productVariants.stock })
+      .from(productVariants)
+      .where(eq(productVariants.id, variantId));
+    expect(variant!.stock).toBe(3);
+
+    const allOrders = await db.select().from(orders).where(eq(orders.sellerId, sellerId));
+    expect(allOrders).toHaveLength(1);
+    await app.close();
+  });
+
+  it("некорректный idempotencyKey (не UUID) → 400", async () => {
+    const app = buildApp();
+    const sellerId = await seedSeller();
+    const { variantId } = await seedProductWithVariant(sellerId, { stock: 5 });
+    const token = await tokenFor(app);
+
+    const res = await req(app, `/shop/${sellerId}/orders`, token, {
+      ...validBuyer(),
+      idempotencyKey: "not-a-uuid",
+      items: [{ variantId, quantity: 1 }],
+    });
+
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
   it("остатка не хватает → 400, остаток не меняется", async () => {
     const app = buildApp();
     const sellerId = await seedSeller();
@@ -154,7 +204,7 @@ describe("POST /shop/:sellerId/orders", () => {
     const token = await tokenFor(app);
 
     const res = await req(app, `/shop/${sellerId}/orders`, token, {
-      ...validBuyer,
+      ...validBuyer(),
       items: [{ variantId, quantity: 2 }],
     });
 
@@ -174,7 +224,7 @@ describe("POST /shop/:sellerId/orders", () => {
     const token = await tokenFor(app);
 
     const res = await req(app, `/shop/${sellerId}/orders`, token, {
-      ...validBuyer,
+      ...validBuyer(),
       items: [{ variantId, quantity: 100 }],
     });
 
@@ -201,7 +251,7 @@ describe("POST /shop/:sellerId/orders", () => {
     const token = await tokenFor(app);
 
     const res = await req(app, `/shop/${sellerId}/orders`, token, {
-      ...validBuyer,
+      ...validBuyer(),
       items: [{ variantId, quantity: 1 }],
     });
 
@@ -215,7 +265,7 @@ describe("POST /shop/:sellerId/orders", () => {
     const token = await tokenFor(app);
 
     const res = await req(app, "/shop/999999/orders", token, {
-      ...validBuyer,
+      ...validBuyer(),
       items: [{ variantId: 1, quantity: 1 }],
     });
 
@@ -235,6 +285,7 @@ describe("POST /shop/:sellerId/orders", () => {
       buyerAddress: "Москва, ул. Примерная, 1",
       consent: false,
       items: [{ variantId, quantity: 1 }],
+      idempotencyKey: randomUUID(),
     });
 
     expect(res.statusCode).toBe(400);
@@ -247,7 +298,7 @@ describe("POST /shop/:sellerId/orders", () => {
     const token = await tokenFor(app);
 
     const res = await req(app, `/shop/${sellerId}/orders`, token, {
-      ...validBuyer,
+      ...validBuyer(),
       items: [],
     });
 

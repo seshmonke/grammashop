@@ -34,10 +34,21 @@ export const checkoutFormSchema = z.object({
 });
 export type CheckoutFormFields = z.infer<typeof checkoutFormSchema>;
 
+// UUID одной попытки оформления (см. Спринт 31) — клиент генерирует его
+// один раз при заходе на чекаут и переиспользует при повторной отправке
+// той же формы (после сетевой ошибки), не на каждый клик "Оформить заказ".
+// Сервер дедуплицирует по нему (уникальный индекс на orders.idempotency_key).
 export const createOrderRequestSchema = checkoutFormSchema.extend({
   items: z.array(orderItemInputSchema).min(1),
+  idempotencyKey: z.string().uuid(),
 });
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
+
+// Единственный контракт ошибки в API — `{ error: string }` (без отдельного
+// поля `code`, см. Спринт 31). Эта строка — единственный источник для
+// сравнения на бэке (orders.route.ts) и фронте (CheckoutPage.tsx), чтобы
+// не разъезжались при правке текста.
+export const INSUFFICIENT_STOCK_ERROR = "недостаточно остатка";
 
 export const orderItemSchema = z.object({
   variantId: z.number().nullable(),

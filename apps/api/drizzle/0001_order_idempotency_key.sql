@@ -1,0 +1,2 @@
+ALTER TABLE "orders" ADD COLUMN "idempotency_key" text DEFAULT gen_random_uuid() NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "orders_idempotency_key_unique" ON "orders" USING btree ("idempotency_key");

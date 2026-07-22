@@ -4,6 +4,7 @@ import { formatPrice } from "../../lib/money";
 import { useCart } from "../../cart/cart-context";
 import { cartTotalKopecks } from "../../cart/cart-reducer";
 import { buildCreateOrderRequest, type CheckoutFormValues } from "../../checkout/build-order-request";
+import { checkoutErrorMessage } from "../../checkout/checkout-error-message";
 import { useCreateOrder } from "../../checkout/useCreateOrder";
 import { validateCheckoutForm, type CheckoutFormErrors } from "../../checkout/validate-checkout-form";
 import { ScreenState } from "../../shop/ScreenState";
@@ -33,7 +34,7 @@ type TouchableField = keyof Omit<CheckoutFormValues, "buyerComment">;
 // фокуса или отправки формы.
 function fieldBorderClass(touched: boolean, hasError: boolean): string {
   if (!touched) return "border-tg-separator";
-  return hasError ? "border-tg-destructive" : "border-emerald-500";
+  return hasError ? "border-tg-destructive" : "border-tg-success";
 }
 
 function SuccessScreen({ order }: { order: CreateOrderResponse }) {
@@ -85,6 +86,10 @@ export function CheckoutPage() {
   const [form, setForm] = useState<CheckoutFormValues>(emptyForm());
   const [touched, setTouched] = useState<Partial<Record<TouchableField, boolean>>>({});
   const createOrder = useCreateOrder(state.sellerId ?? 0);
+  // Один UUID на попытку оформления (не на каждый клик — см. Спринт 31):
+  // если "Оформить заказ" нажали повторно после сетевой ошибки, сервер
+  // должен увидеть тот же ключ и не задвоить заказ.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   // Живая валидация — та же Zod-схема на каждое изменение формы (дешёвая
   // синхронная проверка, дебаунс не нужен). errors показываются только для
@@ -112,7 +117,7 @@ export function CheckoutPage() {
       return;
     }
 
-    const request = buildCreateOrderRequest(state.items, form);
+    const request = buildCreateOrderRequest(state.items, form, idempotencyKey);
     await createOrder.mutateAsync(request);
     dispatch({ type: "clear" });
   }
@@ -229,7 +234,7 @@ export function CheckoutPage() {
 
             {createOrder.isError && (
               <p className="text-sm text-tg-destructive">
-                Не удалось оформить заказ — попробуйте ещё раз.
+                {checkoutErrorMessage(createOrder.error)}
               </p>
             )}
 

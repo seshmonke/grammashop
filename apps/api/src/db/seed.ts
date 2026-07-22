@@ -80,6 +80,9 @@ function main(): Promise<void> {
       .returning({ id: sellers.id });
     if (!seller) throw new Error("seed: вставка продавца не вернула строку");
 
+    // +30 дней от момента запуска — витрина seed-продавца видна, пока не
+    // истечёт (см. CONCEPT.md#оплата-подписки-продавцом). Если протухла —
+    // не чинить руками, просто перезапустить `db:seed`, скрипт идемпотентен.
     const paidUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await tx.insert(subscriptions).values({
       sellerId: seller.id,
@@ -162,6 +165,11 @@ function main(): Promise<void> {
     );
     console.log(
       `seed: витрина — t.me/grammashopbot/shop?startapp=${seller.id}`,
+    );
+    console.log(
+      `seed: подписка оплачена до ${paidUntil.toISOString()} — если витрина ` +
+        "перестала быть видна (протухший paid_until), это чинится не руками, " +
+        "а повторным запуском `pnpm --filter @grammashop/api db:seed`.",
     );
   });
 }

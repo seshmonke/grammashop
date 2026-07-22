@@ -83,6 +83,26 @@ describe("formatOrderNotificationText", () => {
     expect(text).toContain("+79990001122");
     expect(text).toContain("Москва, ул. Примерная, 1");
     expect(text).toContain("Позвоните заранее");
+    expect(text).toContain("<b>");
+  });
+
+  it("HTML-спецсимволы в ПДн-полях покупателя экранируются", () => {
+    const text = formatOrderNotificationText({
+      order: {
+        id: 1,
+        totalKopecks: 1000,
+        buyerFullName: "Иван <script>",
+        buyerPhone: "+7",
+        buyerAddress: "Дом & Сад",
+        buyerComment: "Позвоните < 18:00",
+      },
+      items: [{ productName: "Товар", variantName: "V", quantity: 1 }],
+    });
+
+    expect(text).toContain("Иван &lt;script&gt;");
+    expect(text).toContain("Дом &amp; Сад");
+    expect(text).toContain("Позвоните &lt; 18:00");
+    expect(text).not.toContain("<script>");
   });
 
   it("без комментария — строка комментария не появляется", () => {
@@ -128,9 +148,10 @@ describe("sendOrderNotification", () => {
     await sendOrderNotification(orderId);
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
-    const [chatId, text] = sendMessage.mock.calls[0]!;
+    const [chatId, text, options] = sendMessage.mock.calls[0]!;
     expect(chatId).toBe(SELLER_TG);
     expect(text).toContain("Худи (M) × 2");
+    expect(options).toEqual({ parse_mode: "HTML" });
   });
 
   it("несуществующий заказ — ничего не отправляет", async () => {

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import {
   createOrderRequestSchema,
   createOrderResponseSchema,
+  INSUFFICIENT_STOCK_ERROR,
   sellerOrderListResponseSchema,
   sellerOrderSchema,
   updateOrderStatusRequestSchema,
@@ -50,7 +51,7 @@ export async function ordersRoutes(fastify: FastifyInstance): Promise<void> {
       );
       if (!result.ok) {
         if (result.reason === "insufficient_stock") {
-          return reply.code(400).send({ error: "недостаточно остатка" });
+          return reply.code(400).send({ error: INSUFFICIENT_STOCK_ERROR });
         }
         return reply.code(404).send({ error: "магазин или товар не найден" });
       }

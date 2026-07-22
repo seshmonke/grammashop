@@ -5,10 +5,51 @@ import { db } from "../db/client.js";
 import { orderItems, orders, products, productVariants, sellers } from "../db/schema.js";
 import { enqueueOrderNotification } from "../notifications/order-notification.js";
 
+// Заказ с таким idempotency-ключом уже существует — вернуть его в форме
+// CreateOrderResponse. Используется и до транзакции (обычный повтор после
+// сетевой ошибки), и после перехвата unique violation (гонка двух
+// одновременных отправок одного и того же ключа, см. createOrder).
+async function loadOrderResponseByIdempotencyKey(
+  sellerId: number,
+  idempotencyKey: string,
+): Promise<CreateOrderResponse | null> {
+  const [order] = await db
+    .select({ id: orders.id, status: orders.status, totalKopecks: orders.totalKopecks })
+    .from(orders)
+    .where(and(eq(orders.sellerId, sellerId), eq(orders.idempotencyKey, idempotencyKey)));
+  if (!order) return null;
+
+  const [seller] = await db
+    .select({ telegramUsername: sellers.telegramUsername, paymentDetails: sellers.paymentDetails })
+    .from(sellers)
+    .where(eq(sellers.id, sellerId));
+  if (!seller) return null;
+
+  const items = await loadOrderItems(order.id);
+  return { id: order.id, status: order.status, totalKopecks: order.totalKopecks, items, seller };
+}
+
+// Код ошибки Postgres на нарушение unique-констрейнта (см.
+// https://www.postgresql.org/docs/current/errcodes-appendix.html) —
+// двойной клик/гонка двух одновременных отправок одного idempotency-ключа
+// ловится здесь, а не предварительным SELECT (Read Committed не видит
+// незакоммиченную вставку соседней транзакции).
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "23505"
+  );
+}
+
 // Создание заказа (см. CONCEPT.md#каталог-и-заказы, STACK.md#доменная-схема-v1).
 // Всё — в одной транзакции с блокировкой строк вариантов (`for("update")"):
 // проверка остатка и его списание не должны разъезжаться при параллельных
-// заказах на один и тот же вариант.
+// заказах на один и тот же вариант. idempotencyKey (Спринт 31) — если
+// покупатель повторно жмёт "Оформить заказ" после сетевой ошибки, а исходный
+// запрос на самом деле дошёл до сервера, повтор не должен задваивать заказ
+// и повторно списывать остаток.
 export async function createOrder(
   sellerId: number,
   buyerTelegramId: number,
@@ -17,7 +58,40 @@ export async function createOrder(
   | { ok: true; order: CreateOrderResponse }
   | { ok: false; reason: "seller_not_found" | "variant_not_found" | "insufficient_stock" }
 > {
-  const result = await db.transaction(async (tx): Promise<
+  const replay = await loadOrderResponseByIdempotencyKey(sellerId, input.idempotencyKey);
+  if (replay) return { ok: true, order: replay };
+
+  let result: Awaited<ReturnType<typeof runCreateOrder>>;
+  try {
+    result = await runCreateOrder(sellerId, buyerTelegramId, input);
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      const raced = await loadOrderResponseByIdempotencyKey(sellerId, input.idempotencyKey);
+      if (raced) return { ok: true, order: raced };
+    }
+    throw err;
+  }
+
+  // Вне транзакции и не блокируя ответ покупателю (см.
+  // notifications/order-notification.ts): очередь — своя, отдельная от БД
+  // заказа схема, откатывать её вместе с транзакцией заказа незачем, а
+  // энкью не должен успеть раньше коммита заказа. Только для реально новых
+  // заказов — replay-ветки выше уже уведомили продавца при первой попытке.
+  if (result.ok) {
+    await enqueueOrderNotification(result.order.id);
+  }
+  return result;
+}
+
+async function runCreateOrder(
+  sellerId: number,
+  buyerTelegramId: number,
+  input: CreateOrderRequest,
+): Promise<
+  | { ok: true; order: CreateOrderResponse }
+  | { ok: false; reason: "seller_not_found" | "variant_not_found" | "insufficient_stock" }
+> {
+  return db.transaction(async (tx): Promise<
     | { ok: true; order: CreateOrderResponse }
     | { ok: false; reason: "seller_not_found" | "variant_not_found" | "insufficient_stock" }
   > => {
@@ -86,6 +160,7 @@ export async function createOrder(
         buyerComment: input.buyerComment ?? null,
         consentAt: new Date(),
         totalKopecks,
+        idempotencyKey: input.idempotencyKey,
       })
       .returning({ id: orders.id, status: orders.status, totalKopecks: orders.totalKopecks });
 
@@ -136,15 +211,6 @@ export async function createOrder(
       },
     };
   });
-
-  // Вне транзакции и не блокируя ответ покупателю (см.
-  // notifications/order-notification.ts): очередь — своя, отдельная от БД
-  // заказа схема, откатывать её вместе с транзакцией заказа незачем, а
-  // энкью не должен успеть раньше коммита заказа.
-  if (result.ok) {
-    await enqueueOrderNotification(result.order.id);
-  }
-  return result;
 }
 
 async function loadOrderItems(orderId: number) {

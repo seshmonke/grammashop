@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/node";
+import { escapeHtml } from "../bot/escape-html.js";
 import { getBot } from "../bot/client.js";
 import { db } from "../db/client.js";
 import { orderItems, orders, sellers } from "../db/schema.js";
@@ -27,16 +28,23 @@ function formatRubles(kopecks: number): string {
   return `${(kopecks / 100).toFixed(2)} ₽`;
 }
 
+// parse_mode: "HTML" (см. sendOrderNotification) — все поля с текстом
+// покупателя/товара экранируются escapeHtml, наши собственные подписи
+// ("Покупатель:" и т.п.) — литералы, экранировать не нужно.
 export function formatOrderNotificationText(data: OrderNotificationData): string {
   const { order, items } = data;
   const lines = [
-    `Новый заказ #${order.id} на ${formatRubles(order.totalKopecks)}`,
-    ...items.map((i) => `${i.productName} (${i.variantName}) × ${i.quantity}`),
-    `Покупатель: ${order.buyerFullName}, ${order.buyerPhone}`,
-    `Адрес: ${order.buyerAddress}`,
+    `🛒 <b>Новый заказ #${order.id}</b> на ${formatRubles(order.totalKopecks)}`,
+    "",
+    ...items.map(
+      (i) => `• ${escapeHtml(i.productName)} (${escapeHtml(i.variantName)}) × ${i.quantity}`,
+    ),
+    "",
+    `👤 <b>Покупатель:</b> ${escapeHtml(order.buyerFullName)}, ${escapeHtml(order.buyerPhone)}`,
+    `📍 <b>Адрес:</b> ${escapeHtml(order.buyerAddress)}`,
   ];
   if (order.buyerComment) {
-    lines.push(`Комментарий: ${order.buyerComment}`);
+    lines.push(`💬 <b>Комментарий:</b> ${escapeHtml(order.buyerComment)}`);
   }
   return lines.join("\n");
 }
@@ -95,6 +103,7 @@ export async function sendOrderNotification(orderId: number): Promise<void> {
   await getBot().api.sendMessage(
     loaded.sellerTelegramId,
     formatOrderNotificationText(loaded.data),
+    { parse_mode: "HTML" },
   );
 }
 

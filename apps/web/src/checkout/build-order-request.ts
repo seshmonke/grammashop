@@ -17,9 +17,13 @@ export type CheckoutFormValues = {
 // просто UX-подсказка: без него функция бросает, а не тихо шлёт `consent:
 // false` мимо схемы. Компонент держит кнопку отправки задизейбленной, пока
 // чекбокс не отмечен, — сюда попадают только уже провалидированные данные.
+// idempotencyKey — UUID одной попытки оформления (см. Спринт 31): вызывающий
+// код генерирует его один раз на форму и передаёт сюда же при повторной
+// отправке после сетевой ошибки, не заново на каждый клик.
 export function buildCreateOrderRequest(
   items: CartItem[],
   form: CheckoutFormValues,
+  idempotencyKey: string,
 ): CreateOrderRequest {
   if (!form.consent) {
     throw new Error("Согласие на обработку ПДн обязательно");
@@ -32,5 +36,6 @@ export function buildCreateOrderRequest(
     buyerAddress: form.buyerAddress.trim(),
     buyerComment: comment === "" ? null : comment,
     consent: true,
+    idempotencyKey,
   };
 }

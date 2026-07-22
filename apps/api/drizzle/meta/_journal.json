@@ -8,6 +8,13 @@
       "when": 1784378695046,
       "tag": "0000_domain_schema_v1",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784751956232,
+      "tag": "0001_order_idempotency_key",
+      "breakpoints": true
     }
   ]
 }

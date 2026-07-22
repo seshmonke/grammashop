@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   integer,
@@ -158,30 +159,46 @@ export const productImages = pgTable("product_images", {
     .defaultNow(),
 });
 
-export const orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
-  sellerId: integer("seller_id")
-    .notNull()
-    .references(() => sellers.id),
-  buyerTelegramId: bigint("buyer_telegram_id", { mode: "number" }).notNull(),
-  status: orderStatusEnum("status").notNull().default("new"),
-  // ПДн покупателя снапшотом (не ссылкой на профиль — его нет). Запрос на
-  // удаление данных = правка этих строк.
-  buyerFullName: text("buyer_full_name").notNull(),
-  buyerPhone: text("buyer_phone").notNull(),
-  buyerAddress: text("buyer_address").notNull(),
-  buyerComment: text("buyer_comment"),
-  // Факт согласия на обработку ПДн (152-ФЗ).
-  consentAt: timestamp("consent_at", { withTimezone: true }).notNull(),
-  totalKopecks: integer("total_kopecks").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+export const orders = pgTable(
+  "orders",
+  {
+    id: serial("id").primaryKey(),
+    sellerId: integer("seller_id")
+      .notNull()
+      .references(() => sellers.id),
+    buyerTelegramId: bigint("buyer_telegram_id", { mode: "number" }).notNull(),
+    status: orderStatusEnum("status").notNull().default("new"),
+    // ПДн покупателя снапшотом (не ссылкой на профиль — его нет). Запрос на
+    // удаление данных = правка этих строк.
+    buyerFullName: text("buyer_full_name").notNull(),
+    buyerPhone: text("buyer_phone").notNull(),
+    buyerAddress: text("buyer_address").notNull(),
+    buyerComment: text("buyer_comment"),
+    // Факт согласия на обработку ПДн (152-ФЗ).
+    consentAt: timestamp("consent_at", { withTimezone: true }).notNull(),
+    totalKopecks: integer("total_kopecks").notNull(),
+    // Идемпотентность оформления заказа (см. Спринт 31): клиент генерирует
+    // UUID один раз на попытку оформления, повторная отправка того же
+    // запроса (после сетевой ошибки) упирается в unique и возвращает уже
+    // созданный заказ вместо дубля — тот же приём, что и у
+    // subscription_payments.yk_payment_id выше. Дефолт — подстраховка на
+    // случай прямой вставки в обход API (например, ручной seed), не то, на
+    // что полагается сам эндпоинт создания заказа.
+    idempotencyKey: text("idempotency_key")
+      .notNull()
+      .default(sql`gen_random_uuid()`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("orders_idempotency_key_unique").on(table.idempotencyKey),
+  ],
+);
 
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
