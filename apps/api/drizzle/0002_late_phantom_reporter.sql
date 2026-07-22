@@ -1,0 +1,1 @@
+ALTER TABLE "sellers" ADD COLUMN "blocked_reason" text;

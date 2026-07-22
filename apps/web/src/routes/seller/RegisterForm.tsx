@@ -54,12 +54,18 @@ export function RegisterForm() {
       setTouched({ shopName: true, fullName: true, phone: true, consent: true });
       return;
     }
-    await registerSeller.mutateAsync({
-      shopName: shopName.trim(),
-      fullName: fullName.trim(),
-      phone: phone.trim(),
-      consent: true,
-    });
+    try {
+      await registerSeller.mutateAsync({
+        shopName: shopName.trim(),
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        consent: true,
+      });
+    } catch {
+      // Ошибка (в т.ч. 409) уже отражена в registerSeller.isError ниже —
+      // здесь только гасим unhandled rejection, дальше делать нечего.
+      return;
+    }
     window.location.href = "/seller";
   }
 

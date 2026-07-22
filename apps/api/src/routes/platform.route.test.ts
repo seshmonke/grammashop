@@ -133,16 +133,42 @@ describe("/platform/sellers", () => {
         { status: "blocked" },
       );
       expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.body)).toMatchObject({ id: sellerId, status: "blocked" });
+      expect(JSON.parse(res.body)).toMatchObject({
+        id: sellerId,
+        status: "blocked",
+        blockedReason: null,
+      });
       await app.close();
     });
 
-    it("разблокирует продавца", async () => {
+    it("сохраняет reason при блокировке", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", true);
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/status`,
+        adminToken,
+        { status: "blocked", reason: "Жалобы покупателей на невыполненные заказы" },
+      );
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body)).toMatchObject({
+        id: sellerId,
+        status: "blocked",
+        blockedReason: "Жалобы покупателей на невыполненные заказы",
+      });
+      await app.close();
+    });
+
+    it("разблокирует продавца и очищает reason", async () => {
       const app = buildApp();
       const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
       const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", true);
       await req(app, "PATCH", `/platform/sellers/${sellerId}/status`, adminToken, {
         status: "blocked",
+        reason: "Причина",
       });
 
       const res = await req(
@@ -153,7 +179,11 @@ describe("/platform/sellers", () => {
         { status: "active" },
       );
       expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.body)).toMatchObject({ id: sellerId, status: "active" });
+      expect(JSON.parse(res.body)).toMatchObject({
+        id: sellerId,
+        status: "active",
+        blockedReason: null,
+      });
       await app.close();
     });
 

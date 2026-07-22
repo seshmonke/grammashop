@@ -27,10 +27,14 @@ export function usePlatformSellers() {
 export function useUpdateSellerStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (args: { id: number; status: SellerStatus }) => {
+    mutationFn: async (args: {
+      id: number;
+      status: SellerStatus;
+      reason?: string;
+    }) => {
       const { data } = await apiClient.patch(
         `/platform/sellers/${args.id}/status`,
-        { status: args.status },
+        { status: args.status, reason: args.reason },
       );
       return updateSellerStatusResponseSchema.parse(data);
     },

@@ -17,7 +17,10 @@ import type { YooKassaPayment } from "../yookassa/client.js";
 const mockCreate = vi.mocked(createPayment);
 const mockGet = vi.mocked(getPayment);
 
-const SELLER_TG = 700500001;
+// 7005200xx — уникальный диапазон файла (см. аудит флаки, Спринт 32):
+// пересекался с orders.route.test.ts/order-notification.test.ts на
+// 700500001.
+const SELLER_TG = 700520001;
 
 async function seedSeller(): Promise<number> {
   const [seller] = await db

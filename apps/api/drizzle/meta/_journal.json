@@ -15,6 +15,13 @@
       "when": 1784751956232,
       "tag": "0001_order_idempotency_key",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784754418521,
+      "tag": "0002_late_phantom_reporter",
+      "breakpoints": true
     }
   ]
 }

@@ -45,12 +45,20 @@ export async function listSellers(): Promise<PlatformSeller[]> {
 export async function updateSellerStatus(
   sellerId: number,
   status: SellerStatus,
-): Promise<{ id: number; status: SellerStatus } | null> {
+  reason?: string,
+): Promise<{ id: number; status: SellerStatus; blockedReason: string | null } | null> {
   const [updated] = await db
     .update(sellers)
-    .set({ status })
+    // reason имеет смысл только при переходе в blocked (обязательность на
+    // уровне UI, см. PlatformHome.tsx) — обратный переход в active всегда
+    // очищает поле, даже если reason по ошибке передан.
+    .set({ status, blockedReason: status === "blocked" ? (reason ?? null) : null })
     .where(eq(sellers.id, sellerId))
-    .returning({ id: sellers.id, status: sellers.status });
+    .returning({
+      id: sellers.id,
+      status: sellers.status,
+      blockedReason: sellers.blockedReason,
+    });
   return updated ?? null;
 }
 

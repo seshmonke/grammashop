@@ -40,6 +40,8 @@ describe("AuthProvider", () => {
         telegramId: 555,
         telegramUsername: null,
         sellerId: 7,
+        sellerStatus: "active",
+        blockedReason: null,
         isAdmin: true,
       },
     });

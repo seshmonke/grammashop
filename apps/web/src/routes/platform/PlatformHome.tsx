@@ -51,6 +51,12 @@ export function PlatformHome() {
   // единичку невозможно стереть, чтобы напечатать другую цифру (найдено
   // на проде). Разбор и клэмп — только в момент отправки.
   const [graceMonths, setGraceMonths] = useState<Record<number, string>>({});
+  // Инлайн-форма причины блокировки вместо модалки — в апе ещё нет ни
+  // одного Dialog-компонента, заводить его ради одной формы избыточно
+  // (см. «Анализ перед стартом», Спринт 32). blockingId === null — форма
+  // закрыта у всех карточек, открыта максимум у одной за раз.
+  const [blockingId, setBlockingId] = useState<number | null>(null);
+  const [blockReason, setBlockReason] = useState<Record<number, string>>({});
 
   function monthsFor(sellerId: number): number {
     const parsed = Number(graceMonths[sellerId]);
@@ -67,15 +73,26 @@ export function PlatformHome() {
     grantGrace.mutate({ id: sellerId, months });
   }
 
-  function handleToggle(sellerId: number, shopName: string, current: SellerStatus) {
-    const next: SellerStatus = current === "active" ? "blocked" : "active";
-    if (
-      next === "blocked" &&
-      !confirm(`Заблокировать «${shopName}»? Витрина продавца сразу перестанет открываться.`)
-    ) {
+  function handleToggle(sellerId: number, current: SellerStatus) {
+    if (current === "active") {
+      setBlockingId(sellerId);
       return;
     }
-    updateStatus.mutate({ id: sellerId, status: next });
+    updateStatus.mutate({ id: sellerId, status: "active" });
+  }
+
+  function handleConfirmBlock(sellerId: number) {
+    const reason = (blockReason[sellerId] ?? "").trim();
+    if (!reason) return;
+    updateStatus.mutate(
+      { id: sellerId, status: "blocked", reason },
+      { onSuccess: () => setBlockingId(null) },
+    );
+  }
+
+  function handleCancelBlock(sellerId: number) {
+    setBlockingId(null);
+    setBlockReason((r) => ({ ...r, [sellerId]: "" }));
   }
 
   return (
@@ -159,11 +176,50 @@ export function PlatformHome() {
                 variant={seller.status === "active" ? "ghost" : "outline"}
                 size="sm"
                 disabled={updateStatus.isPending}
-                onClick={() => handleToggle(seller.id, seller.shopName, seller.status)}
+                onClick={() => handleToggle(seller.id, seller.status)}
               >
                 {seller.status === "active" ? "Заблокировать" : "Разблокировать"}
               </Button>
             </div>
+
+            {blockingId === seller.id && (
+              <div className="mt-3 space-y-2 border-t border-tg-separator pt-3">
+                <label
+                  className="block text-sm text-tg-hint"
+                  htmlFor={`block-reason-${seller.id}`}
+                >
+                  Причина блокировки «{seller.shopName}» — покажем продавцу
+                </label>
+                <textarea
+                  id={`block-reason-${seller.id}`}
+                  rows={2}
+                  value={blockReason[seller.id] ?? ""}
+                  onChange={(e) =>
+                    setBlockReason((r) => ({ ...r, [seller.id]: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-tg-separator bg-tg-bg px-3 py-2 text-sm text-tg-text"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCancelBlock(seller.id)}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      updateStatus.isPending || !(blockReason[seller.id] ?? "").trim()
+                    }
+                    onClick={() => handleConfirmBlock(seller.id)}
+                  >
+                    Заблокировать
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </main>

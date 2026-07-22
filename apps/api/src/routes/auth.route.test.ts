@@ -144,7 +144,7 @@ describe("POST /auth", () => {
     await app.close();
   });
 
-  it("заблокированный продавец: status=blocked → sellerId null", async () => {
+  it("заблокированный продавец: status=blocked → sellerId null, но sellerStatus/blockedReason различают его от незарегистрированного", async () => {
     await db.insert(sellers).values({
       telegramId: BLOCKED_ID_TG,
       telegramUsername: "auth_test_blocked",
@@ -152,13 +152,30 @@ describe("POST /auth", () => {
       phone: "+70000000002",
       shopName: "Блок-тест",
       status: "blocked",
+      blockedReason: "Жалобы покупателей",
     });
 
     const app = buildApp();
     const response = await postAuth(app, signInitData(BLOCKED_ID_TG));
 
     expect(response.statusCode).toBe(200);
-    expect(authResponseSchema.parse(response.json()).sellerId).toBeNull();
+    const body = authResponseSchema.parse(response.json());
+    expect(body.sellerId).toBeNull();
+    expect(body.sellerStatus).toBe("blocked");
+    expect(body.blockedReason).toBe("Жалобы покупателей");
+
+    await app.close();
+  });
+
+  it("незарегистрированный пользователь: sellerId и sellerStatus оба null", async () => {
+    const app = buildApp();
+    const response = await postAuth(app, signInitData(BUYER_ID));
+
+    expect(response.statusCode).toBe(200);
+    const body = authResponseSchema.parse(response.json());
+    expect(body.sellerId).toBeNull();
+    expect(body.sellerStatus).toBeNull();
+    expect(body.blockedReason).toBeNull();
 
     await app.close();
   });

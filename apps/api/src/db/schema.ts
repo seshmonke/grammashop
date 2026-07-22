@@ -54,6 +54,9 @@ export const sellers = pgTable("sellers", {
   // Реквизиты для перевода на Тарифе 1 (оплата покупателем напрямую).
   paymentDetails: text("payment_details"),
   status: sellerStatusEnum("status").notNull().default("active"),
+  // Свободный текст, вводит админ при блокировке (см. Спринт 32); при
+  // возврате в active очищается — не история, а причина текущей блокировки.
+  blockedReason: text("blocked_reason"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -15,7 +15,10 @@ import {
   sendOrderNotification,
 } from "./order-notification.js";
 
-const SELLER_TG = 700500001;
+// 7005100xx — уникальный диапазон файла (см. аудит флаки, Спринт 32):
+// пересекался с orders.route.test.ts/billing.route.test.ts на 700500001,
+// два теста параллельно писали/чистили один и тот же telegram_id.
+const SELLER_TG = 700510001;
 
 async function seedOrder() {
   const [seller] = await db
@@ -41,7 +44,7 @@ async function seedOrder() {
     .insert(orders)
     .values({
       sellerId: seller!.id,
-      buyerTelegramId: 700500099,
+      buyerTelegramId: 700510099,
       status: "new",
       buyerFullName: "Иван Иванов",
       buyerPhone: "+79990001122",

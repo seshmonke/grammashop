@@ -15,7 +15,9 @@ import { runRecurringBilling } from "./billing.service.js";
 const mockCreate = vi.mocked(createPayment);
 const mockGet = vi.mocked(getPayment);
 
-const SELLER_TG = 700600001;
+// 7006100xx — уникальный диапазон файла (см. аудит флаки, Спринт 32):
+// пересекался с platform.route.test.ts на 700600001.
+const SELLER_TG = 700610001;
 
 async function seedDueSubscription(opts: {
   paidUntil: Date;

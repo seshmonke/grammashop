@@ -45,7 +45,11 @@ export async function platformRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "некорректный статус" });
     }
 
-    const updated = await updateSellerStatus(sellerId, parsed.data.status);
+    const updated = await updateSellerStatus(
+      sellerId,
+      parsed.data.status,
+      parsed.data.reason,
+    );
     if (!updated) {
       return reply.code(404).send({ error: "продавец не найден" });
     }

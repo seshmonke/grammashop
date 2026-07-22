@@ -14,10 +14,17 @@ const buyer: Session = {
   telegramId: 1,
   telegramUsername: null,
   sellerId: null,
+  sellerStatus: null,
+  blockedReason: null,
   isAdmin: false,
 };
-const seller: Session = { ...buyer, sellerId: 9 };
+const seller: Session = { ...buyer, sellerId: 9, sellerStatus: "active" };
 const admin: Session = { ...buyer, isAdmin: true };
+const blockedSeller: Session = {
+  ...buyer,
+  sellerStatus: "blocked",
+  blockedReason: "Жалобы покупателей",
+};
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -138,5 +145,14 @@ describe("Landing", () => {
     vi.spyOn(telegram, "getStartParam").mockReturnValue("register");
     renderLanding(seller);
     expect(screen.getByText("SELLER-PAGE")).toBeInTheDocument();
+  });
+
+  it("заблокированного продавца ведёт на экран блокировки с причиной, а не на Fork", () => {
+    vi.spyOn(telegram, "getStartParam").mockReturnValue(undefined);
+    renderLanding(blockedSeller);
+    expect(screen.getByText(/магазин заблокирован/i)).toBeInTheDocument();
+    expect(screen.getByText(/жалобы покупателей/i)).toBeInTheDocument();
+    expect(screen.getByText("@syzrp")).toBeInTheDocument();
+    expect(screen.queryByText(/запустить магазин/i)).not.toBeInTheDocument();
   });
 });

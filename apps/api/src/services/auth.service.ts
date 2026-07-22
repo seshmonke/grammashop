@@ -1,4 +1,5 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import type { SellerStatus } from "@grammashop/shared";
 import { db } from "../db/client.js";
 import { sellers } from "../db/schema.js";
 
@@ -12,6 +13,11 @@ export interface AuthContext {
   // админом (blocked не получает продавцовскую админку — механизм отзыва
   // доступа, см. очередь TASKS.md «Механизм отзыва сессии»).
   sellerId: number | null;
+  // Статус продавца независимо от sellerId (null — продавца вообще нет,
+  // ни разу не регистрировался) — фронт различает «не зарегистрирован» и
+  // «заблокирован» (см. Спринт 32), sellerId при blocked всё равно null.
+  sellerStatus: SellerStatus | null;
+  blockedReason: string | null;
   isAdmin: boolean;
 }
 
@@ -31,15 +37,19 @@ export async function resolveAuthContext(
   telegramId: number,
 ): Promise<AuthContext> {
   const [seller] = await db
-    .select({ id: sellers.id })
+    .select({
+      id: sellers.id,
+      status: sellers.status,
+      blockedReason: sellers.blockedReason,
+    })
     .from(sellers)
-    .where(
-      and(eq(sellers.telegramId, telegramId), eq(sellers.status, "active")),
-    );
+    .where(eq(sellers.telegramId, telegramId));
 
   return {
     telegramId,
-    sellerId: seller?.id ?? null,
+    sellerId: seller?.status === "active" ? seller.id : null,
+    sellerStatus: seller?.status ?? null,
+    blockedReason: seller?.blockedReason ?? null,
     isAdmin: parseAdminIds(process.env.ADMIN_TELEGRAM_IDS).has(telegramId),
   };
 }

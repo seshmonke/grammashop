@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sellerStatusSchema } from "../domain/enums.js";
 
 // Контракт POST /auth (см. STACK.md#авторизация): фронт отдаёт сырой
 // initData из Telegram SDK, бэк после проверки HMAC-подписи возвращает
@@ -22,6 +23,11 @@ export const authResponseSchema = z.object({
   // null — у аккаунта нет активного продавца (не зарегистрирован или
   // заблокирован админом): продавцовская админка недоступна.
   sellerId: z.number().nullable(),
+  // Статус продавца независимо от sellerId — различает «не
+  // зарегистрирован» (null) от «заблокирован» (sellerStatus: "blocked",
+  // sellerId всё равно null) — см. Спринт 32.
+  sellerStatus: sellerStatusSchema.nullable(),
+  blockedReason: z.string().nullable(),
   isAdmin: z.boolean(),
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
