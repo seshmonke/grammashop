@@ -3,6 +3,7 @@ import { formatPrice } from "../../lib/money";
 import { useCart } from "../../cart/cart-context";
 import { cartTotalKopecks } from "../../cart/cart-reducer";
 import { ScreenState } from "../../shop/ScreenState";
+import { TabBar } from "../../nav/TabBar";
 
 // Экран корзины (см. STACK.md#роутинг, карта экранов: каталог → карточка →
 // корзина → чекаут). Правка количества и удаление позиций; оформление —
@@ -19,7 +20,7 @@ export function CartPage() {
         <h1 className="y2k-heading font-display mt-1 text-lg text-tg-text">Корзина</h1>
       </header>
 
-      <main className="p-4 pb-28">
+      <main className={`p-4 ${state.items.length > 0 ? "pb-44" : "pb-28"}`}>
         {state.items.length === 0 ? (
           <ScreenState variant="inline" title="Корзина пуста." action={{ to: "/", label: "В магазин" }} />
         ) : (
@@ -93,7 +94,10 @@ export function CartPage() {
       </main>
 
       {state.items.length > 0 && (
-        <div className="tg-glass fixed inset-x-0 bottom-0 z-20 border-t border-tg-separator px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+        // Поднято над плавающим TabBar (см. ниже) — иначе докнутая сводка
+        // чекаута перекрывала бы пилюлю навигации. Отступ подобран под
+        // фактическую высоту TabBar, проверено визуально (Спринт 33).
+        <div className="tg-glass fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 border-t border-tg-separator px-4 pb-3 pt-3">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-tg-hint">Итого</span>
             <span className="y2k-price-glow text-lg font-semibold text-magenta-on-theme tabular-nums">
@@ -108,6 +112,7 @@ export function CartPage() {
           </Link>
         </div>
       )}
+      <TabBar />
     </div>
   );
 }

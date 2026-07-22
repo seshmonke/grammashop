@@ -7,7 +7,6 @@ import { ScreenState } from "../../shop/ScreenState";
 import { formatPrice } from "../../lib/money";
 import { discountPercent, hasDiscount, isVariantOutOfStock } from "../../shop/pricing";
 import { useCart } from "../../cart/cart-context";
-import { MiniCartBar } from "../../cart/MiniCartBar";
 
 // Галерея карточки — свайп-карусель с точками-индикаторами (см.
 // STACK.md#пайплайн-фото-товара-спринт-16-расширено-спринтом-20), без
@@ -200,7 +199,7 @@ export function ProductDetail() {
         </Link>
       </header>
 
-      <main className="p-4 pb-24">
+      <main className="p-4">
         {isLoading ? (
           <ScreenState variant="inline" title="Загрузка…" />
         ) : isError || !product || !data ? (
@@ -234,7 +233,6 @@ export function ProductDetail() {
           </>
         )}
       </main>
-      <MiniCartBar />
     </div>
   );
 }

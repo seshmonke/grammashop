@@ -92,4 +92,4 @@
 30. [Ревью дизайна и контента лендинга (волна 3)](30-landing-design-review.md) — закрыт
 31. [Подготовка к первому живому продавцу](31-first-seller-readiness.md) — закрыт
 32. [UX блокировки продавца + флаки тестов](32-blocked-seller-ux.md) — закрыт
-33. [Bottom tab bar навигации витрины](33-bottom-tab-bar-navigation.md)
+33. [Bottom tab bar навигации витрины](33-bottom-tab-bar-navigation.md) — закрыт

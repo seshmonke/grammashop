@@ -2,7 +2,7 @@ import { resolveSellerId } from "../../shop/seller-id";
 import { useShopCatalog } from "../../shop/useShopCatalog";
 import { ProductCard } from "../../shop/ProductCard";
 import { ScreenState } from "../../shop/ScreenState";
-import { MiniCartBar } from "../../cart/MiniCartBar";
+import { TabBar } from "../../nav/TabBar";
 
 // Витрина продавца по seller_id из start_param (см. STACK.md#роутинг).
 // Read-only: товары из каталога, оформление заказа — отдельные задачи.
@@ -49,7 +49,7 @@ export function StorefrontHome() {
           </div>
         )}
       </main>
-      <MiniCartBar />
+      <TabBar />
     </div>
   );
 }
