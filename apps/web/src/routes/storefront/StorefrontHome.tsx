@@ -38,7 +38,7 @@ export function StorefrontHome() {
         )}
       </header>
 
-      <main className="mx-auto max-w-(--catalog-max-width) flex-1 p-4">
+      <main className="mx-auto w-full max-w-(--catalog-max-width) flex-1 p-4">
         {data.products.length === 0 ? (
           <ScreenState variant="inline" title="В этом магазине пока нет товаров." />
         ) : (
