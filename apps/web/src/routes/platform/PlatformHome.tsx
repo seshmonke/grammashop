@@ -3,6 +3,7 @@ import type { SellerStatus, SubscriptionStatus, SubscriptionTier } from "@gramma
 import { Button } from "@/components/ui/button";
 import { ScreenState } from "../../shop/ScreenState";
 import { AdminToolbar } from "../../nav/AdminToolbar";
+import { shopLink } from "../../lib/platform";
 import {
   useGrantGrace,
   usePlatformSellers,
@@ -120,6 +121,14 @@ export function PlatformHome() {
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-medium text-tg-text">{seller.shopName}</h3>
                 <p className="mt-1 text-sm text-tg-hint">@{seller.telegramUsername}</p>
+                <a
+                  href={shopLink(seller.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-tg-link"
+                >
+                  Открыть витрину
+                </a>
               </div>
               <span className="shrink-0 rounded-full bg-tg-bg px-3 py-1 text-xs font-medium text-tg-text">
                 {SELLER_STATUS_LABELS[seller.status]}
@@ -144,7 +153,7 @@ export function PlatformHome() {
               )}
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-2 border-t border-tg-separator pt-3">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-tg-separator pt-3">
               <div className="flex items-center gap-1">
                 <input
                   type="number"

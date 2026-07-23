@@ -68,7 +68,7 @@ export function SellerHome() {
         {/* Разделы (Заказы/Настройки/Платформа) теперь в AdminToolbar внизу
             экрана — здесь остаётся только основное действие экрана. */}
         <div className="mt-2">
-          <Button asChild size="sm" className="bg-magenta text-white hover:bg-magenta/90">
+          <Button asChild>
             <Link to="/seller/products/new">Добавить</Link>
           </Button>
         </div>

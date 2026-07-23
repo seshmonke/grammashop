@@ -571,7 +571,6 @@ export function ProductForm() {
             <Button
               type="submit"
               disabled={saving}
-              className="bg-magenta text-white hover:bg-magenta/90"
             >
               {saving ? "Сохранение…" : "Сохранить"}
             </Button>

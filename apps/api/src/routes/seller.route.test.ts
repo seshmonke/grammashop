@@ -26,6 +26,7 @@ async function tokenFor(
     telegramId: number;
     telegramUsername: string | null;
     sellerId: number | null;
+    isAdmin?: boolean;
   },
 ): Promise<string> {
   await app.ready();
@@ -33,7 +34,7 @@ async function tokenFor(
     telegramId: opts.telegramId,
     telegramUsername: opts.telegramUsername,
     sellerId: opts.sellerId,
-    isAdmin: false,
+    isAdmin: opts.isAdmin ?? false,
   });
 }
 
@@ -287,11 +288,15 @@ describe("/seller/delete + /seller/restore", () => {
   const RESTORE_TG = 700900011;
   const RESTORE_EXPIRED_TG = 700900012;
   const RESTORE_NOT_DELETED_TG = 700900013;
+  const RESTORE_ADMIN_DELETED_TG = 700900014;
+  const RESTORE_ADMIN_DELETED_BUT_ADMIN_TG = 700900015;
   const DELETE_ALL_TG = [
     DELETE_TG,
     RESTORE_TG,
     RESTORE_EXPIRED_TG,
     RESTORE_NOT_DELETED_TG,
+    RESTORE_ADMIN_DELETED_TG,
+    RESTORE_ADMIN_DELETED_BUT_ADMIN_TG,
   ];
 
   beforeEach(async () => {
@@ -326,7 +331,7 @@ describe("/seller/delete + /seller/restore", () => {
     await app.close();
   });
 
-  it("POST /seller/delete → 204, статус deleted, deletedAt/deleteReason проставлены", async () => {
+  it("POST /seller/delete → 204, статус deleted, deletedAt/deleteReason/deletedBy проставлены", async () => {
     const sellerId = await seedActiveSeller(DELETE_TG);
     const app = buildApp();
     const token = await tokenFor(app, {
@@ -343,6 +348,7 @@ describe("/seller/delete + /seller/restore", () => {
     expect(row?.status).toBe("deleted");
     expect(row?.deleteReason).toBe("Закрываю магазин");
     expect(row?.deletedAt).toBeInstanceOf(Date);
+    expect(row?.deletedBy).toBe("seller");
     await app.close();
   });
 
@@ -354,6 +360,7 @@ describe("/seller/delete + /seller/restore", () => {
         status: "deleted",
         deletedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         deleteReason: "Передумал",
+        deletedBy: "seller",
       })
       .where(eq(sellers.id, sellerId));
 
@@ -374,6 +381,60 @@ describe("/seller/delete + /seller/restore", () => {
     expect(row?.status).toBe("active");
     expect(row?.deletedAt).toBeNull();
     expect(row?.deleteReason).toBeNull();
+    expect(row?.deletedBy).toBeNull();
+    await app.close();
+  });
+
+  it("POST /seller/restore, удалил админ → 403, статус остаётся deleted (Спринт 40)", async () => {
+    const sellerId = await seedActiveSeller(RESTORE_ADMIN_DELETED_TG);
+    await db
+      .update(sellers)
+      .set({
+        status: "deleted",
+        deletedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        deleteReason: "Заблокирован платформой",
+        deletedBy: "admin",
+      })
+      .where(eq(sellers.id, sellerId));
+
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: RESTORE_ADMIN_DELETED_TG,
+      telegramUsername: "deleteflow",
+      sellerId: null,
+    });
+    const res = await req(app, "POST", "/seller/restore", token);
+    expect(res.statusCode).toBe(403);
+
+    const [row] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
+    expect(row?.status).toBe("deleted");
+    await app.close();
+  });
+
+  it("POST /seller/restore, удалил админ, но сессия сама админ → 200 (владелец платформы)", async () => {
+    const sellerId = await seedActiveSeller(RESTORE_ADMIN_DELETED_BUT_ADMIN_TG);
+    await db
+      .update(sellers)
+      .set({
+        status: "deleted",
+        deletedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        deleteReason: "Заблокирован платформой",
+        deletedBy: "admin",
+      })
+      .where(eq(sellers.id, sellerId));
+
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: RESTORE_ADMIN_DELETED_BUT_ADMIN_TG,
+      telegramUsername: "deleteflow",
+      sellerId: null,
+      isAdmin: true,
+    });
+    const res = await req(app, "POST", "/seller/restore", token);
+    expect(res.statusCode).toBe(200);
+
+    const [row] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
+    expect(row?.status).toBe("active");
     await app.close();
   });
 

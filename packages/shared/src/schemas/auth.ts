@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sellerStatusSchema } from "../domain/enums.js";
+import { sellerDeletedBySchema, sellerStatusSchema } from "../domain/enums.js";
 
 // Контракт POST /auth (см. STACK.md#авторизация): фронт отдаёт сырой
 // initData из Telegram SDK, бэк после проверки HMAC-подписи возвращает
@@ -32,6 +32,11 @@ export const authResponseSchema = z.object({
   // восстановления нужна дата истечения 30-дневного окна.
   deleteReason: z.string().nullable(),
   deletedAt: z.coerce.date().nullable(),
+  // Актёр удаления (Спринт 40) — экран восстановления скрывает кнопку
+  // самовосстановления, если удалил админ (кроме случая, когда сессия и
+  // так admin — владелец платформы одновременно продавец своего демо-
+  // магазина, см. CONCEPT.md#интерфейсы-платформы).
+  deletedBy: sellerDeletedBySchema.nullable(),
   isAdmin: z.boolean(),
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;

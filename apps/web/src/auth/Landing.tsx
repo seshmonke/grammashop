@@ -51,7 +51,14 @@ export function Landing() {
     return <BlockedSeller reason={session.blockedReason} />;
   }
   if (session.sellerStatus === "deleted") {
-    return <DeletedSeller reason={session.deleteReason} deletedAt={session.deletedAt!} />;
+    return (
+      <DeletedSeller
+        reason={session.deleteReason}
+        deletedAt={session.deletedAt!}
+        deletedBy={session.deletedBy}
+        isAdmin={session.isAdmin}
+      />
+    );
   }
   if (session.sellerId != null) {
     return <Navigate to="/seller" replace />;

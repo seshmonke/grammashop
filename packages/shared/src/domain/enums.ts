@@ -15,6 +15,14 @@ export const sellerStatuses = ["active", "blocked", "deleted"] as const;
 export const sellerStatusSchema = z.enum(sellerStatuses);
 export type SellerStatus = z.infer<typeof sellerStatusSchema>;
 
+// Кто инициировал текущее удаление магазина (см. Спринт 40, пересматривает
+// Спринт 37): определяет, кто может восстановить — самоудаление продавцом
+// восстанавливает сам продавец в пределах окна, удаление админом —
+// только админ. null, пока магазин не удалён (как и deletedAt/deleteReason).
+export const sellerDeletedByActors = ["seller", "admin"] as const;
+export const sellerDeletedBySchema = z.enum(sellerDeletedByActors);
+export type SellerDeletedBy = z.infer<typeof sellerDeletedBySchema>;
+
 // Тариф подписки (см. CONCEPT.md#тарифы): tier1 = Free, tier2 = Premium.
 // tier3 — наследие прежней трёхуровневой сетки (решение 21.07.2026),
 // выведен из употребления, но не удалён из enum — миграция БД не нужна,

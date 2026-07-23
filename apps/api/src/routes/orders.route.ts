@@ -66,15 +66,26 @@ export async function ordersRoutes(fastify: FastifyInstance): Promise<void> {
     },
   );
 
-  // GET /orders/mine — «мои заказы» покупателя (см. CONCEPT.md#каталог-и-заказы,
-  // Спринт 34). Любой авторизованный Telegram-пользователь, не только
-  // владелец магазина — тот же принцип авторизации, что у чекаута выше
-  // (fastify.authenticate без requireSellerId).
+  // GET /shop/:sellerId/orders/mine — «мои заказы» покупателя в конкретном
+  // магазине (см. CONCEPT.md#каталог-и-заказы). Пересматривает Спринт 34:
+  // список был сквозным по всем магазинам платформы, сужен до магазина,
+  // в который зашёл покупатель по диплинку (решение 23.07.2026, Спринт 40
+  // — у покупателя сейчас нет экрана вне контекста магазина, сквозной
+  // список убран целиком, не оставлен отдельной точкой входа). Любой
+  // авторизованный Telegram-пользователь, не только владелец магазина —
+  // тот же принцип авторизации, что у чекаута выше (fastify.authenticate
+  // без requireSellerId).
   fastify.get(
-    "/orders/mine",
+    "/shop/:sellerId/orders/mine",
     { preHandler: [fastify.authenticate] },
-    async (request) => {
-      const list = await listBuyerOrders(request.user.telegramId);
+    async (request, reply) => {
+      const { sellerId: raw } = request.params as { sellerId: string };
+      const sellerId = Number(raw);
+      if (!Number.isInteger(sellerId) || sellerId <= 0) {
+        return reply.code(400).send({ error: "sellerId должен быть числом" });
+      }
+
+      const list = await listBuyerOrders(sellerId, request.user.telegramId);
       return buyerOrderListResponseSchema.parse({ orders: list });
     },
   );

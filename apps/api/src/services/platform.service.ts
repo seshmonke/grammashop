@@ -58,12 +58,16 @@ export async function updateSellerStatus(
     // (обязательность на уровне UI, см. PlatformHome.tsx) — любой другой
     // целевой статус всегда очищает оба поля, даже если reason по ошибке
     // передан. deletedAt — только при переходе в deleted (см. Спринт 37,
-    // окно восстановления считается от него).
+    // окно восстановления считается от него). deletedBy — 'admin' (Спринт
+    // 40): этот путь всегда инициирован админом (requireAdmin в
+    // platform.route.ts), самоудаление продавцом идёт через
+    // seller.service.ts#deleteSeller с deletedBy: 'seller'.
     .set({
       status,
       blockedReason: status === "blocked" ? (reason ?? null) : null,
       deleteReason: status === "deleted" ? (reason ?? null) : null,
       deletedAt: status === "deleted" ? new Date() : null,
+      deletedBy: status === "deleted" ? "admin" : null,
     })
     .where(eq(sellers.id, sellerId))
     .returning({

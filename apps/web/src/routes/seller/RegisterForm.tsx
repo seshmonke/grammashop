@@ -182,7 +182,7 @@ export function RegisterForm() {
           <Button
             type="submit"
             disabled={registerSeller.isPending}
-            className="w-full rounded-2xl bg-magenta py-3 text-white hover:bg-magenta/90"
+            className="w-full"
           >
             {registerSeller.isPending ? "Запускаем…" : "Запустить магазин"}
           </Button>

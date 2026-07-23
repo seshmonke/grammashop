@@ -1,4 +1,4 @@
-import { restoreWindowEnd } from "@grammashop/shared";
+import { restoreWindowEnd, type SellerDeletedBy } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { useRestoreSeller } from "../seller/useSellerProfile";
 
@@ -16,12 +16,20 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
 export function DeletedSeller({
   reason,
   deletedAt,
+  deletedBy,
+  isAdmin,
 }: {
   reason: string | null;
   deletedAt: Date;
+  deletedBy: SellerDeletedBy | null;
+  isAdmin: boolean;
 }) {
   const restoreSeller = useRestoreSeller();
   const windowEnd = restoreWindowEnd(deletedAt);
+  // Удалил админ — восстановить может только он (Спринт 40, пересматривает
+  // Спринт 37), кроме случая, когда эта же сессия и есть админ (владелец
+  // платформы — одновременно продавец своего демо-магазина).
+  const canRestore = deletedBy !== "admin" || isAdmin;
 
   async function handleRestore() {
     await restoreSeller.mutateAsync();
@@ -34,22 +42,31 @@ export function DeletedSeller({
         Магазин удалён
       </h1>
       {reason && <p className="text-tg-text">{reason}</p>}
-      <p className="text-sm text-tg-hint">
-        Восстановить можно до {dateFormatter.format(windowEnd)} — дальше
-        данные обезличиваются безвозвратно.
-      </p>
-      {restoreSeller.isError && (
-        <p className="text-sm text-tg-destructive">
-          Не удалось восстановить — попробуйте ещё раз.
+      {canRestore ? (
+        <>
+          <p className="text-sm text-tg-hint">
+            Восстановить можно до {dateFormatter.format(windowEnd)} — дальше
+            данные обезличиваются безвозвратно.
+          </p>
+          {restoreSeller.isError && (
+            <p className="text-sm text-tg-destructive">
+              Не удалось восстановить — попробуйте ещё раз.
+            </p>
+          )}
+          <Button
+            onClick={handleRestore}
+            disabled={restoreSeller.isPending}
+            className="mt-2"
+          >
+            {restoreSeller.isPending ? "Восстанавливаем…" : "Восстановить магазин"}
+          </Button>
+        </>
+      ) : (
+        <p className="text-sm text-tg-hint">
+          Магазин удалён администратором платформы — восстановить его может
+          только администратор.
         </p>
       )}
-      <Button
-        onClick={handleRestore}
-        disabled={restoreSeller.isPending}
-        className="mt-2 bg-magenta text-white hover:bg-magenta/90"
-      >
-        {restoreSeller.isPending ? "Восстанавливаем…" : "Восстановить магазин"}
-      </Button>
     </div>
   );
 }

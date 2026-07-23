@@ -185,6 +185,7 @@ describe("POST /auth", () => {
       status: "deleted",
       deleteReason: "Больше не продаю",
       deletedAt,
+      deletedBy: "seller",
     });
 
     const app = buildApp();
@@ -196,6 +197,7 @@ describe("POST /auth", () => {
     expect(body.sellerStatus).toBe("deleted");
     expect(body.deleteReason).toBe("Больше не продаю");
     expect(body.deletedAt?.getTime()).toBe(deletedAt.getTime());
+    expect(body.deletedBy).toBe("seller");
 
     await app.close();
   });

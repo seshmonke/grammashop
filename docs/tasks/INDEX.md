@@ -99,3 +99,4 @@
 37. [Удаление магазина с окном восстановления + retry мониторинга](37-seller-soft-delete-and-monitoring-retry.md) — закрыт
 38. [Сетка каталога — фиксированные 2/4 колонки](38-catalog-grid-breakpoints.md) — закрыт
 39. [Кап ширины floating toolbar + фикс высоты карточки товара](39-toolbar-width-cap-and-card-height-fix.md) — закрыт
+40. [Форма кнопок + права восстановления + заказы по магазину + починка/просмотр витрины в админке платформы](40-admin-button-restore-rights-and-review-debt.md) — закрыт

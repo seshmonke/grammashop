@@ -108,14 +108,21 @@ export async function updateSellerProfile(
 
 // Самоудаление магазина продавцом (пока он ещё active, requireSellerId
 // это гарантирует на уровне роута) — паттерн идентичен блокировке
-// админом (Спринт 32), просто другой актёр и целевой статус.
+// админом (Спринт 32), просто другой актёр и целевой статус. deletedBy —
+// 'seller', отличает от админского удаления (platform.service.ts) для
+// проверки права восстановления ниже (Спринт 40).
 export async function deleteSeller(
   sellerId: number,
   reason: string,
 ): Promise<{ id: number } | null> {
   const [updated] = await db
     .update(sellers)
-    .set({ status: "deleted", deletedAt: new Date(), deleteReason: reason })
+    .set({
+      status: "deleted",
+      deletedAt: new Date(),
+      deleteReason: reason,
+      deletedBy: "seller",
+    })
     .where(eq(sellers.id, sellerId))
     .returning({ id: sellers.id });
   return updated ?? null;
@@ -123,22 +130,34 @@ export async function deleteSeller(
 
 export type RestoreSellerResult =
   | { ok: true; id: number }
-  | { ok: false; reason: "not-deleted" | "window-expired" };
+  | { ok: false; reason: "not-deleted" | "window-expired" | "admin-only" };
 
 // Самостоятельное восстановление — резолвит продавца по telegramId, не по
 // sellerId (он null, пока магазин deleted, см. auth/access.ts). Админский
-// путь восстановления не проверяет окно — идёт через
+// путь восстановления не проверяет окно/актёра — идёт через
 // platform.service.ts#updateSellerStatus по :id из URL, не по сессии.
+// isAdmin — для крайнего случая, когда сессия одновременно и продавец, и
+// админ (владелец платформы, см. CONCEPT.md#интерфейсы-платформы): такая
+// сессия обходит проверку актёра даже на этом, «продавцовском», роуте.
 export async function restoreSeller(
   telegramId: number,
+  isAdmin: boolean,
 ): Promise<RestoreSellerResult | null> {
   const [seller] = await db
-    .select({ id: sellers.id, status: sellers.status, deletedAt: sellers.deletedAt })
+    .select({
+      id: sellers.id,
+      status: sellers.status,
+      deletedAt: sellers.deletedAt,
+      deletedBy: sellers.deletedBy,
+    })
     .from(sellers)
     .where(eq(sellers.telegramId, telegramId));
   if (!seller) return null;
   if (seller.status !== "deleted") {
     return { ok: false, reason: "not-deleted" };
+  }
+  if (seller.deletedBy === "admin" && !isAdmin) {
+    return { ok: false, reason: "admin-only" };
   }
 
   if (new Date() > restoreWindowEnd(seller.deletedAt!)) {
@@ -147,7 +166,7 @@ export async function restoreSeller(
 
   await db
     .update(sellers)
-    .set({ status: "active", deletedAt: null, deleteReason: null })
+    .set({ status: "active", deletedAt: null, deleteReason: null, deletedBy: null })
     .where(eq(sellers.id, seller.id));
   return { ok: true, id: seller.id };
 }

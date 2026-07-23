@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { platformSellerListResponseSchema } from "@grammashop/shared";
 import { buildApp } from "../app.js";
 import { db } from "../db/client.js";
@@ -206,6 +206,11 @@ describe("/platform/sellers", () => {
         blockedReason: null,
         deleteReason: "Продавец попросил удалить",
       });
+      const [deletedRow] = await db
+        .select({ deletedBy: sellers.deletedBy })
+        .from(sellers)
+        .where(eq(sellers.id, sellerId));
+      expect(deletedRow?.deletedBy).toBe("admin");
 
       const restoreRes = await req(
         app,
@@ -221,6 +226,11 @@ describe("/platform/sellers", () => {
         blockedReason: null,
         deleteReason: null,
       });
+      const [restoredRow] = await db
+        .select({ deletedBy: sellers.deletedBy })
+        .from(sellers)
+        .where(eq(sellers.id, sellerId));
+      expect(restoredRow?.deletedBy).toBeNull();
       await app.close();
     });
 

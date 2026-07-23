@@ -257,11 +257,15 @@ export async function listSellerOrders(sellerId: number): Promise<SellerOrder[]>
   );
 }
 
-// «Мои заказы» покупателя (GET /orders/mine, Спринт 34). В отличие от
-// listSellerOrders фильтр по buyerTelegramId, не sellerId — список сквозной
-// по всем магазинам платформы (один бот, продавцы различаются start_param),
-// поэтому джойн с sellers за shopName — иначе плоский список нечитаем.
-export async function listBuyerOrders(buyerTelegramId: number): Promise<BuyerOrder[]> {
+// «Мои заказы» покупателя в конкретном магазине (GET
+// /shop/:sellerId/orders/mine). Пересматривает Спринт 34 — фильтр теперь
+// по sellerId и buyerTelegramId вместе, не только по buyerTelegramId
+// (сквозной список по всем магазинам платформы убран, Спринт 40); джойн с
+// sellers остался ради telegramUsername («Написать продавцу»).
+export async function listBuyerOrders(
+  sellerId: number,
+  buyerTelegramId: number,
+): Promise<BuyerOrder[]> {
   const own = await db
     .select({
       id: orders.id,
@@ -274,7 +278,7 @@ export async function listBuyerOrders(buyerTelegramId: number): Promise<BuyerOrd
     })
     .from(orders)
     .innerJoin(sellers, eq(orders.sellerId, sellers.id))
-    .where(eq(orders.buyerTelegramId, buyerTelegramId))
+    .where(and(eq(orders.sellerId, sellerId), eq(orders.buyerTelegramId, buyerTelegramId)))
     .orderBy(desc(orders.createdAt), desc(orders.id));
 
   return Promise.all(

@@ -44,6 +44,7 @@ describe("AuthProvider", () => {
         blockedReason: null,
         deleteReason: null,
         deletedAt: null,
+        deletedBy: null,
         isAdmin: true,
       },
     });

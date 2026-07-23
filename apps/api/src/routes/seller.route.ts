@@ -100,13 +100,21 @@ export async function sellerRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Восстановление самим продавцом — не через requireSellerId: после
   // удаления sellerId в сессии null (см. auth/access.ts), резолвим по
-  // telegramId, как и /seller/register.
+  // telegramId, как и /seller/register. isAdmin передаётся в сервис для
+  // крайнего случая, когда сессия одновременно продавец и админ (Спринт
+  // 40) — иначе владелец платформы не смог бы восстановить собственный
+  // демо-магазин через этот роут после админского удаления.
   fastify.post("/seller/restore", async (request, reply) => {
-    const result = await restoreSeller(request.user.telegramId);
+    const result = await restoreSeller(request.user.telegramId, request.user.isAdmin);
     if (!result) {
       return reply.code(404).send({ error: "магазин не найден" });
     }
     if (!result.ok) {
+      if (result.reason === "admin-only") {
+        return reply
+          .code(403)
+          .send({ error: "восстановить может только администратор" });
+      }
       const message =
         result.reason === "window-expired"
           ? "окно восстановления истекло"

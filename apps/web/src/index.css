@@ -24,17 +24,15 @@
      Спринт 29). */
   --tg-success: #10b981;
 
-  /* shadcn-токены (админки — плоско, без темы клиента) оставлены как были. */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* shadcn-токен (админки — плоско, без темы клиента), оставлен как был —
+     единственный, кто ещё его использует (HealthStatus.tsx). Остальные
+     shadcn-заготовки (background/foreground/primary/accent/input/ring)
+     убраны Спринтом 40: button.tsx — единственный их потребитель, и он
+     переведён на --tg-*/--ice-on-theme (см. DESIGN_SYSTEM.md#реализация,
+     «Форма <Button> в админках» — bg-background рендерился белым
+     прямоугольником на тёмной теме Telegram). */
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
 
   /* Y2K-брендинг витрины (см. docs/design/DESIGN_SYSTEM.md) — акцент
      ПОВЕРХ темы Telegram выше, не замена: bg/text витрины остаются
@@ -108,16 +106,8 @@
   --color-tg-destructive: var(--tg-destructive);
   --color-tg-success: var(--tg-success);
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
 
   --color-void: var(--void);
   --color-void-2: var(--void-2);

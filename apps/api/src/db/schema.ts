@@ -13,6 +13,7 @@ import {
 import {
   orderStatuses,
   productStatuses,
+  sellerDeletedByActors,
   sellerStatuses,
   subscriptionPaymentStatuses,
   subscriptionStatuses,
@@ -26,6 +27,10 @@ import {
 // покупателей — минимизация по 152-ФЗ).
 
 export const sellerStatusEnum = pgEnum("seller_status", sellerStatuses);
+export const sellerDeletedByEnum = pgEnum(
+  "seller_deleted_by",
+  sellerDeletedByActors,
+);
 export const subscriptionTierEnum = pgEnum(
   "subscription_tier",
   subscriptionTiers,
@@ -66,6 +71,11 @@ export const sellers = pgTable("sellers", {
   // не заводим — не хранить производное значение.
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   deleteReason: text("delete_reason"),
+  // Актёр текущего удаления — 'seller' (самоудаление) или 'admin' (Спринт
+  // 40, пересматривает Спринт 37): решает, кто может восстановить.
+  // null, пока магазин не удалён, очищается при возврате в active — тот
+  // же принцип, что у deletedAt/deleteReason выше.
+  deletedBy: sellerDeletedByEnum("deleted_by"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

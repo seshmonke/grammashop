@@ -86,7 +86,7 @@ function SubscriptionBanner({
       <Button
         onClick={handlePay}
         disabled={paySubscription.isPending}
-        className="mt-3 w-full bg-magenta text-white hover:bg-magenta/90"
+        className="mt-3 w-full"
       >
         {paySubscription.isPending ? "Открываем оплату…" : "Оплатить подписку"}
       </Button>
@@ -284,7 +284,7 @@ export function SellerProfile() {
               <Button
                 type="submit"
                 disabled={updateProfile.isPending}
-                className="w-full bg-magenta text-white hover:bg-magenta/90"
+                className="w-full"
               >
                 {updateProfile.isPending ? "Сохраняем…" : "Сохранить"}
               </Button>

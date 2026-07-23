@@ -1,14 +1,17 @@
 import type { OrderStatus } from "@grammashop/shared";
 import { formatPrice } from "../../lib/money";
+import { resolveSellerId } from "../../shop/seller-id";
 import { ScreenState } from "../../shop/ScreenState";
 import { TabBar } from "../../nav/TabBar";
 import { useBuyerOrders } from "../../checkout/useBuyerOrders";
 
-// «Мои заказы» покупателя (Спринт 34, см. CONCEPT.md#каталог-и-заказы).
-// Сквозной список по всем магазинам платформы (GET /orders/mine) — плоские
-// карточки с полным составом заказа инлайн, без отдельного экрана деталей
-// (тот же объём информации, что и в SellerOrders.tsx, не потребовал
-// drill-down там — здесь тем более, покупатель не меняет статус).
+// «Мои заказы» покупателя в текущем магазине (см. CONCEPT.md#каталог-и-заказы).
+// Пересматривает Спринт 34 — список был сквозным по всем магазинам платформы,
+// сужен до магазина по start_param (Спринт 40, тот же resolveSellerId, что
+// каталог/карточка товара). Плоские карточки с полным составом заказа
+// инлайн, без отдельного экрана деталей (тот же объём информации, что и в
+// SellerOrders.tsx, не потребовал drill-down там — здесь тем более,
+// покупатель не меняет статус).
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   new: "Новый",
@@ -25,7 +28,8 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
 });
 
 export function OrdersPage() {
-  const { data: orders, isLoading, isError } = useBuyerOrders();
+  const sellerId = resolveSellerId();
+  const { data: orders, isLoading, isError } = useBuyerOrders(sellerId);
 
   return (
     <div className="y2k-scanlines flex min-h-dvh flex-col bg-tg-bg">
@@ -34,6 +38,12 @@ export function OrdersPage() {
       </header>
 
       <main className="flex-1 space-y-3 p-4">
+        {sellerId == null && (
+          <ScreenState
+            variant="inline"
+            title="Магазин открывается по ссылке продавца"
+          />
+        )}
         {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
           <ScreenState variant="inline" title="Не удалось загрузить заказы." />

@@ -18,6 +18,7 @@ const buyer: Session = {
   blockedReason: null,
   deleteReason: null,
   deletedAt: null,
+  deletedBy: null,
   isAdmin: false,
 };
 const seller: Session = { ...buyer, sellerId: 9, sellerStatus: "active" };
@@ -32,6 +33,11 @@ const deletedSeller: Session = {
   sellerStatus: "deleted",
   deleteReason: "Больше не продаю",
   deletedAt: new Date("2026-07-01T00:00:00Z"),
+};
+const deletedByAdminSeller: Session = {
+  ...deletedSeller,
+  deleteReason: "Нарушение правил площадки",
+  deletedBy: "admin",
 };
 
 afterEach(() => {
@@ -171,5 +177,21 @@ describe("Landing", () => {
     expect(screen.getByText(/больше не продаю/i)).toBeInTheDocument();
     expect(screen.getByText(/восстановить магазин/i)).toBeInTheDocument();
     expect(screen.queryByText(/запустить магазин/i)).not.toBeInTheDocument();
+  });
+
+  it("удалённого админом продавца — без кнопки самовосстановления (Спринт 40)", () => {
+    vi.spyOn(telegram, "getStartParam").mockReturnValue(undefined);
+    renderLanding(deletedByAdminSeller);
+    expect(screen.getByText(/нарушение правил площадки/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/восстановить его может только администратор/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^восстановить магазин$/i)).not.toBeInTheDocument();
+  });
+
+  it("удалённого админом продавца, чья сессия сама админ — кнопка показана", () => {
+    vi.spyOn(telegram, "getStartParam").mockReturnValue(undefined);
+    renderLanding({ ...deletedByAdminSeller, isAdmin: true });
+    expect(screen.getByText(/восстановить магазин/i)).toBeInTheDocument();
   });
 });

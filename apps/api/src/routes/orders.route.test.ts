@@ -446,9 +446,11 @@ describe("GET /seller/orders", () => {
   });
 });
 
-// GET /orders/mine — «мои заказы» покупателя (Спринт 34, см.
-// CONCEPT.md#каталог-и-заказы). Сквозной список по всем магазинам платформы:
-// фильтр по buyerTelegramId, а не sellerId, в отличие от /seller/orders.
+// GET /shop/:sellerId/orders/mine — «мои заказы» покупателя в конкретном
+// магазине (см. CONCEPT.md#каталог-и-заказы). Пересматривает Спринт 34 —
+// список был сквозным по всем магазинам платформы, сужен фильтром и по
+// sellerId, и по buyerTelegramId (Спринт 40, решение 23.07.2026: сквозной
+// список убран целиком, не оставлен отдельной точкой входа).
 
 const MINE_BUYER_TG = 700600001;
 const MINE_OTHER_BUYER_TG = 700600002;
@@ -491,7 +493,7 @@ async function createOrderFor(
   return order!.id;
 }
 
-describe("GET /orders/mine", () => {
+describe("GET /shop/:sellerId/orders/mine", () => {
   beforeEach(async () => {
     const stale = await db
       .select({ id: sellers.id })
@@ -510,33 +512,43 @@ describe("GET /orders/mine", () => {
 
   it("без JWT → 401", async () => {
     const app = buildApp();
-    const res = await methodReq(app, "GET", "/orders/mine");
+    const res = await methodReq(app, "GET", "/shop/1/orders/mine");
     expect(res.statusCode).toBe(401);
     await app.close();
   });
 
-  it("отдаёт заказы покупателя по всем магазинам, новые сверху, чужие заказы не попадают", async () => {
+  it("sellerId не числом → 400", async () => {
+    const app = buildApp();
+    const token = await mineTokenFor(app, MINE_BUYER_TG);
+    const res = await methodReq(app, "GET", "/shop/not-a-number/orders/mine", token);
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("отдаёт заказы покупателя только в этом магазине, новые сверху — заказы в другом магазине и чужие заказы не попадают", async () => {
     const app = buildApp();
     const sellerAId = await seedSellerAdmin(MINE_SELLER_A_TG, "shop_a");
     const sellerBId = await seedSellerAdmin(MINE_SELLER_B_TG, "shop_b");
     const { variantId: variantA } = await seedProductWithVariant(sellerAId);
     const { variantId: variantB } = await seedProductWithVariant(sellerBId);
 
-    const orderAId = await createOrderFor(sellerAId, MINE_BUYER_TG, variantA);
+    const firstOrderId = await createOrderFor(sellerAId, MINE_BUYER_TG, variantA);
     await new Promise((resolve) => setTimeout(resolve, 5));
-    const orderBId = await createOrderFor(sellerBId, MINE_BUYER_TG, variantB);
+    const secondOrderId = await createOrderFor(sellerAId, MINE_BUYER_TG, variantA);
+    // Тот же покупатель в другом магазине — не должен попасть в список.
+    await createOrderFor(sellerBId, MINE_BUYER_TG, variantB);
+    // Другой покупатель в том же магазине — тоже не должен попасть.
     await createOrderFor(sellerAId, MINE_OTHER_BUYER_TG, variantA);
 
     const token = await mineTokenFor(app, MINE_BUYER_TG);
-    const res = await methodReq(app, "GET", "/orders/mine", token);
+    const res = await methodReq(app, "GET", `/shop/${sellerAId}/orders/mine`, token);
 
     expect(res.statusCode).toBe(200);
     const body = buyerOrderListResponseSchema.parse(res.json());
-    expect(body.orders.map((o) => o.id)).toEqual([orderBId, orderAId]);
+    expect(body.orders.map((o) => o.id)).toEqual([secondOrderId, firstOrderId]);
     expect(body.orders[0]!.shopName).toBe("Магазин");
-    expect(body.orders[0]!.telegramUsername).toBe("shop_b");
-    expect(body.orders[0]!.sellerId).toBe(sellerBId);
-    expect(body.orders[1]!.sellerId).toBe(sellerAId);
+    expect(body.orders[0]!.telegramUsername).toBe("shop_a");
+    expect(body.orders[0]!.sellerId).toBe(sellerAId);
     expect(body.orders[0]!.items).toHaveLength(1);
     await app.close();
   });

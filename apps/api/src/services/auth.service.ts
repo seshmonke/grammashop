@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { SellerStatus } from "@grammashop/shared";
+import type { SellerDeletedBy, SellerStatus } from "@grammashop/shared";
 import { db } from "../db/client.js";
 import { sellers } from "../db/schema.js";
 
@@ -22,6 +22,9 @@ export interface AuthContext {
   blockedReason: string | null;
   deleteReason: string | null;
   deletedAt: Date | null;
+  // Актёр удаления (Спринт 40) — экран восстановления решает, показывать
+  // ли кнопку самовосстановления (см. DeletedSeller.tsx).
+  deletedBy: SellerDeletedBy | null;
   isAdmin: boolean;
 }
 
@@ -47,6 +50,7 @@ export async function resolveAuthContext(
       blockedReason: sellers.blockedReason,
       deleteReason: sellers.deleteReason,
       deletedAt: sellers.deletedAt,
+      deletedBy: sellers.deletedBy,
     })
     .from(sellers)
     .where(eq(sellers.telegramId, telegramId));
@@ -58,6 +62,7 @@ export async function resolveAuthContext(
     blockedReason: seller?.blockedReason ?? null,
     deleteReason: seller?.deleteReason ?? null,
     deletedAt: seller?.deletedAt ?? null,
+    deletedBy: seller?.deletedBy ?? null,
     isAdmin: parseAdminIds(process.env.ADMIN_TELEGRAM_IDS).has(telegramId),
   };
 }
