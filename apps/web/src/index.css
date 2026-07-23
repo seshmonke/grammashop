@@ -160,6 +160,13 @@ button:focus-visible {
   background-color: color-mix(in srgb, var(--tg-bg) 45%, transparent);
   backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  /* Форсируем свой composite-слой (GPU) — известный баг WebKit/Firefox:
+     backdrop-filter не рендерится (либо рендерится без блюра) на элементе
+     с border-radius, вложенном внутрь sticky-родителя, без этого —
+     см. https://bugzilla.mozilla.org/show_bug.cgi?id=1803813. Капсула у
+     нас именно такая (rounded-full внутри sticky-подвала FloatingToolbar),
+     шапок разделов (.tg-glass, без border-radius) баг не касается. */
+  transform: translateZ(0);
 }
 
 /* Контраст иконки+подписи вкладки поверх прозрачной капсулы (Спринт 36,
