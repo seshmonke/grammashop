@@ -94,7 +94,12 @@ export function ProductCard({
       </div>
 
       <div className="min-w-0 p-3">
-        <h3 className="y2k-heading font-display line-clamp-2 min-w-0 text-sm text-tg-text">
+        {/* min-h-10 = 2 строки text-sm (20px×2) — резервирует высоту под
+            line-clamp-2 всегда, а не только когда название реально
+            переносится, иначе карточки с короткими/длинными названиями
+            заметно «прыгают» по высоте (не связано с наличием фото —
+            область фото уже зафиксирована aspect-square). */}
+        <h3 className="y2k-heading font-display line-clamp-2 min-h-10 min-w-0 text-sm text-tg-text">
           {product.name}
         </h3>
 

@@ -51,7 +51,12 @@ export function FloatingToolbar({
       {above}
       <nav
         aria-label="Основная навигация"
-        className="tg-glass-toolbar mx-4 mt-3 rounded-full border border-tg-separator p-1 shadow-lg"
+        // w-[calc(100%-2rem)] + mx-auto вместо mx-4: на узких экранах даёт
+        // те же 16px от краёв, что и раньше, но на широких — max-width
+        // капсулы (см. --toolbar-max-width, index.css) центрируется, а не
+        // липнет к левому краю с mx-4 фиксированной величины (см.
+        // DESIGN_SYSTEM.md#навигация--floating-toolbar, Спринт 39).
+        className="tg-glass-toolbar mx-auto mt-3 w-[calc(100%-2rem)] max-w-(--toolbar-max-width) rounded-full border border-tg-separator p-1 shadow-lg"
       >
         <div className="relative flex items-stretch">
           {activeIndex >= 0 && (
