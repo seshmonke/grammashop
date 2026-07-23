@@ -162,6 +162,14 @@ button:focus-visible {
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
 }
 
+/* Контраст иконки+подписи вкладки поверх прозрачной капсулы (Спринт 36,
+   жалоба на светлой теме — контент каталога просвечивал сквозь
+   .tg-glass-toolbar и «съедал» текст). drop-shadow, не text-shadow —
+   действует и на SVG-иконки Lucide, не только на текстовый узел. */
+.toolbar-label-shadow {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
 /* Y2K-приёмы витрины (см. docs/design/DESIGN_SYSTEM.md#приёмы) — glow
    только на коммерческих/CTA-элементах, не на инертном тексте, иначе
    обесценится (правило зафиксировано в чистовике). */

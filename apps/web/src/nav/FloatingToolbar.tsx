@@ -71,7 +71,7 @@ export function FloatingToolbar({
                 key={to}
                 to={to}
                 aria-current={active ? "page" : undefined}
-                className={`relative z-10 flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-xs font-medium ${
+                className={`toolbar-label-shadow relative z-10 flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-xs font-medium ${
                   active ? activeTextClassName : "text-tg-hint"
                 }`}
               >
