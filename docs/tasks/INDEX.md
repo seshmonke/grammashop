@@ -95,4 +95,4 @@
 33. [Bottom tab bar навигации витрины](33-bottom-tab-bar-navigation.md) — закрыт
 34. [Заказы покупателя + технический долг из ревью 23.07](34-buyer-orders-and-review-debt.md) — закрыт
 35. [Права покупателя: обезличивание, возврат товара, контакт продавца](35-buyer-pdn-rights-and-returns.md) — закрыт
-36. [Диплинк на заказ в уведомлении + фикс смещения тулбара](36-order-deeplink-and-toolbar-shift.md)
+36. [Диплинк на заказ в уведомлении + фикс смещения тулбара](36-order-deeplink-and-toolbar-shift.md) — закрыт
