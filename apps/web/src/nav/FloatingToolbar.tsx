@@ -72,7 +72,7 @@ export function FloatingToolbar({
                 to={to}
                 aria-current={active ? "page" : undefined}
                 className={`toolbar-label-shadow relative z-10 flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-xs font-medium ${
-                  active ? activeTextClassName : "text-tg-hint"
+                  active ? activeTextClassName : "text-tg-text"
                 }`}
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
