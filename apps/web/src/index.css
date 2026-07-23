@@ -28,7 +28,7 @@
      единственный, кто ещё его использует (HealthStatus.tsx). Остальные
      shadcn-заготовки (background/foreground/primary/accent/input/ring)
      убраны Спринтом 40: button.tsx — единственный их потребитель, и он
-     переведён на --tg-*/--ice-on-theme (см. DESIGN_SYSTEM.md#реализация,
+     переведён на токены --tg- и --ice-on-theme (см. DESIGN_SYSTEM.md#реализация,
      «Форма <Button> в админках» — bg-background рендерился белым
      прямоугольником на тёмной теме Telegram). */
   --muted: oklch(0.97 0 0);
