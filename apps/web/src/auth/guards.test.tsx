@@ -16,6 +16,8 @@ const buyer: Session = {
   sellerId: null,
   sellerStatus: null,
   blockedReason: null,
+  deleteReason: null,
+  deletedAt: null,
   isAdmin: false,
 };
 const seller: Session = { ...buyer, sellerId: 9, sellerStatus: "active" };
@@ -24,6 +26,12 @@ const blockedSeller: Session = {
   ...buyer,
   sellerStatus: "blocked",
   blockedReason: "Жалобы покупателей",
+};
+const deletedSeller: Session = {
+  ...buyer,
+  sellerStatus: "deleted",
+  deleteReason: "Больше не продаю",
+  deletedAt: new Date("2026-07-01T00:00:00Z"),
 };
 
 afterEach(() => {
@@ -153,6 +161,15 @@ describe("Landing", () => {
     expect(screen.getByText(/магазин заблокирован/i)).toBeInTheDocument();
     expect(screen.getByText(/жалобы покупателей/i)).toBeInTheDocument();
     expect(screen.getByText("@syzrp")).toBeInTheDocument();
+    expect(screen.queryByText(/запустить магазин/i)).not.toBeInTheDocument();
+  });
+
+  it("удалённого продавца ведёт на экран восстановления с причиной, а не на Fork", () => {
+    vi.spyOn(telegram, "getStartParam").mockReturnValue(undefined);
+    renderLanding(deletedSeller);
+    expect(screen.getByText(/магазин удалён/i)).toBeInTheDocument();
+    expect(screen.getByText(/больше не продаю/i)).toBeInTheDocument();
+    expect(screen.getByText(/восстановить магазин/i)).toBeInTheDocument();
     expect(screen.queryByText(/запустить магазин/i)).not.toBeInTheDocument();
   });
 });

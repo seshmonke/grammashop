@@ -24,10 +24,14 @@ export const authResponseSchema = z.object({
   // заблокирован админом): продавцовская админка недоступна.
   sellerId: z.number().nullable(),
   // Статус продавца независимо от sellerId — различает «не
-  // зарегистрирован» (null) от «заблокирован» (sellerStatus: "blocked",
-  // sellerId всё равно null) — см. Спринт 32.
+  // зарегистрирован» (null) от «заблокирован»/«удалён» (sellerId всё
+  // равно null в обоих случаях) — см. Спринт 32/37.
   sellerStatus: sellerStatusSchema.nullable(),
   blockedReason: z.string().nullable(),
+  // Причина и момент самоудаления/удаления админом (Спринт 37) — экрану
+  // восстановления нужна дата истечения 30-дневного окна.
+  deleteReason: z.string().nullable(),
+  deletedAt: z.coerce.date().nullable(),
   isAdmin: z.boolean(),
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;

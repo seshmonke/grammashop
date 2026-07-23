@@ -7,6 +7,7 @@ import { shopLink } from "../../lib/platform";
 import { ScreenState } from "../../shop/ScreenState";
 import { AdminToolbar } from "../../nav/AdminToolbar";
 import {
+  useDeleteSeller,
   usePaySubscription,
   useSellerProfile,
   useUpdateSellerProfile,
@@ -118,6 +119,76 @@ function ShopLinkCard({ sellerId }: { sellerId: number }) {
   );
 }
 
+// Удаление магазина (см. Спринт 37) — тот же паттерн инлайн-формы, что
+// форма блокировки в PlatformHome.tsx (Спринт 32): в apps/web всё ещё нет
+// ни одного Dialog-компонента, заводить его ради одной формы избыточно.
+// Успех — полная перезагрузка на `/`, Landing подхватит sellerStatus
+// "deleted" и покажет DeletedSeller (sellerId в новой сессии уже null).
+function DeleteShopCard() {
+  const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState("");
+  const deleteSeller = useDeleteSeller();
+
+  async function handleDelete() {
+    await deleteSeller.mutateAsync({ reason: reason.trim() });
+    window.location.href = "/";
+  }
+
+  if (!confirming) {
+    return (
+      <div className="rounded-2xl bg-tg-surface p-4">
+        <p className="font-medium text-tg-text">Удаление магазина</p>
+        <p className="mt-1 text-sm text-tg-hint">
+          Витрина скроется сразу, 30 дней на восстановление — дальше данные
+          обезличиваются безвозвратно.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 text-tg-destructive"
+          onClick={() => setConfirming(true)}
+        >
+          Удалить магазин
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-2xl bg-tg-surface p-4">
+      <label className="block text-sm text-tg-hint" htmlFor="deleteReason">
+        Почему вы удаляете магазин?
+      </label>
+      <textarea
+        id="deleteReason"
+        rows={2}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        className="w-full rounded-lg border border-tg-separator bg-tg-bg px-3 py-2 text-sm text-tg-text"
+      />
+      {deleteSeller.isError && (
+        <p className="text-sm text-tg-destructive">
+          Не удалось удалить — попробуйте ещё раз.
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>
+          Отмена
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-tg-destructive"
+          disabled={deleteSeller.isPending || !reason.trim()}
+          onClick={handleDelete}
+        >
+          {deleteSeller.isPending ? "Удаляем…" : "Удалить"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function SellerProfile() {
   const session = useSession();
   const { data: profile, isLoading, isError } = useSellerProfile();
@@ -218,6 +289,8 @@ export function SellerProfile() {
                 {updateProfile.isPending ? "Сохраняем…" : "Сохранить"}
               </Button>
             </form>
+
+            <DeleteShopCard />
           </>
         )}
       </main>

@@ -5,6 +5,7 @@ import { buildApp } from "./app.js";
 import { boss } from "./queue/client.js";
 import { registerOrderNotificationWorker } from "./notifications/order-notification.js";
 import { registerRecurringBillingWorker } from "./billing/recurring-worker.js";
+import { registerFinalizeDeletionWorker } from "./sellers/finalize-deletion-worker.js";
 import { getBot } from "./bot/client.js";
 import { registerStartHandler } from "./bot/start-handler.js";
 
@@ -18,6 +19,7 @@ const app = buildApp();
 await boss.start();
 await registerOrderNotificationWorker();
 await registerRecurringBillingWorker();
+await registerFinalizeDeletionWorker();
 
 // Long polling, не вебхук: без диплинка бот отвечает только на /start,
 // отдельный HTTPS-роут и secret token ради одного апдейта — лишняя

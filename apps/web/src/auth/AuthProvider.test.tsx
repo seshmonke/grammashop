@@ -42,6 +42,8 @@ describe("AuthProvider", () => {
         sellerId: 7,
         sellerStatus: "active",
         blockedReason: null,
+        deleteReason: null,
+        deletedAt: null,
         isAdmin: true,
       },
     });

@@ -6,9 +6,12 @@ import { z } from "zod";
 // между БД и приложением по построению.
 
 // Статус продавца: blocked — действие админа (см.
-// CONCEPT.md#модерация-и-лимиты). Скрытие витрины за неоплату —
-// производное от статуса подписки, здесь не дублируется.
-export const sellerStatuses = ["active", "blocked"] as const;
+// CONCEPT.md#модерация-и-лимиты); deleted — самоудаление продавцом или
+// админом, с окном восстановления 30 дней (см.
+// docs/tasks/37-seller-soft-delete-and-monitoring-retry.md). Скрытие
+// витрины за неоплату — производное от статуса подписки, здесь не
+// дублируется.
+export const sellerStatuses = ["active", "blocked", "deleted"] as const;
 export const sellerStatusSchema = z.enum(sellerStatuses);
 export type SellerStatus = z.infer<typeof sellerStatusSchema>;
 

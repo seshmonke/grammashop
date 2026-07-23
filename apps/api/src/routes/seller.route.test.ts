@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
   registerSellerResponseSchema,
+  restoreSellerResponseSchema,
   sellerProfileSchema,
 } from "@grammashop/shared";
 import { buildApp } from "../app.js";
@@ -275,6 +276,142 @@ describe("/seller/profile", () => {
       shopName: "",
     });
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+});
+
+// Самоудаление + восстановление (см. Спринт 37,
+// docs/tasks/37-seller-soft-delete-and-monitoring-retry.md).
+describe("/seller/delete + /seller/restore", () => {
+  const DELETE_TG = 700900010;
+  const RESTORE_TG = 700900011;
+  const RESTORE_EXPIRED_TG = 700900012;
+  const RESTORE_NOT_DELETED_TG = 700900013;
+  const DELETE_ALL_TG = [
+    DELETE_TG,
+    RESTORE_TG,
+    RESTORE_EXPIRED_TG,
+    RESTORE_NOT_DELETED_TG,
+  ];
+
+  beforeEach(async () => {
+    await db.delete(sellers).where(inArray(sellers.telegramId, DELETE_ALL_TG));
+  });
+
+  async function seedActiveSeller(telegramId: number) {
+    const [seller] = await db
+      .insert(sellers)
+      .values({
+        telegramId,
+        telegramUsername: "deleteflow",
+        fullName: "Удаляемый Продавец",
+        phone: "+79990003333",
+        shopName: "Магазин на удаление",
+        status: "active",
+      })
+      .returning({ id: sellers.id });
+    return seller!.id;
+  }
+
+  it("POST /seller/delete без причины → 400", async () => {
+    const sellerId = await seedActiveSeller(DELETE_TG);
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: DELETE_TG,
+      telegramUsername: "deleteflow",
+      sellerId,
+    });
+    const res = await req(app, "POST", "/seller/delete", token, { reason: "" });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("POST /seller/delete → 204, статус deleted, deletedAt/deleteReason проставлены", async () => {
+    const sellerId = await seedActiveSeller(DELETE_TG);
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: DELETE_TG,
+      telegramUsername: "deleteflow",
+      sellerId,
+    });
+    const res = await req(app, "POST", "/seller/delete", token, {
+      reason: "Закрываю магазин",
+    });
+    expect(res.statusCode).toBe(204);
+
+    const [row] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
+    expect(row?.status).toBe("deleted");
+    expect(row?.deleteReason).toBe("Закрываю магазин");
+    expect(row?.deletedAt).toBeInstanceOf(Date);
+    await app.close();
+  });
+
+  it("POST /seller/restore в пределах окна → 200, статус снова active", async () => {
+    const sellerId = await seedActiveSeller(RESTORE_TG);
+    await db
+      .update(sellers)
+      .set({
+        status: "deleted",
+        deletedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        deleteReason: "Передумал",
+      })
+      .where(eq(sellers.id, sellerId));
+
+    const app = buildApp();
+    // sellerId в токене null — так же, как реальный /auth выдал бы его
+    // удалённому продавцу (см. auth/access.ts).
+    const token = await tokenFor(app, {
+      telegramId: RESTORE_TG,
+      telegramUsername: "deleteflow",
+      sellerId: null,
+    });
+    const res = await req(app, "POST", "/seller/restore", token);
+    expect(res.statusCode).toBe(200);
+    const body = restoreSellerResponseSchema.parse(res.json());
+    expect(body.id).toBe(sellerId);
+
+    const [row] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
+    expect(row?.status).toBe("active");
+    expect(row?.deletedAt).toBeNull();
+    expect(row?.deleteReason).toBeNull();
+    await app.close();
+  });
+
+  it("POST /seller/restore за пределами 30-дневного окна → 409, статус остаётся deleted", async () => {
+    const sellerId = await seedActiveSeller(RESTORE_EXPIRED_TG);
+    await db
+      .update(sellers)
+      .set({
+        status: "deleted",
+        deletedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
+        deleteReason: "Просрочено",
+      })
+      .where(eq(sellers.id, sellerId));
+
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: RESTORE_EXPIRED_TG,
+      telegramUsername: "deleteflow",
+      sellerId: null,
+    });
+    const res = await req(app, "POST", "/seller/restore", token);
+    expect(res.statusCode).toBe(409);
+
+    const [row] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
+    expect(row?.status).toBe("deleted");
+    await app.close();
+  });
+
+  it("POST /seller/restore для не-удалённого продавца → 409", async () => {
+    await seedActiveSeller(RESTORE_NOT_DELETED_TG);
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: RESTORE_NOT_DELETED_TG,
+      telegramUsername: "deleteflow",
+      sellerId: null,
+    });
+    const res = await req(app, "POST", "/seller/restore", token);
+    expect(res.statusCode).toBe(409);
     await app.close();
   });
 });

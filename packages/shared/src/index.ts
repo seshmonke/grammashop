@@ -8,3 +8,4 @@ export * from "./schemas/billing.js";
 export * from "./schemas/seller.js";
 export * from "./domain/enums.js";
 export * from "./domain/order-start-param.js";
+export * from "./domain/seller-deletion.js";

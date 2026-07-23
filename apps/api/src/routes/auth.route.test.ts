@@ -12,7 +12,14 @@ const BUYER_ID = 700100001;
 const SELLER_ID_TG = 700100002;
 const BLOCKED_ID_TG = 700100003;
 const ADMIN_ID_TG = 700100004;
-const ALL_TEST_IDS = [BUYER_ID, SELLER_ID_TG, BLOCKED_ID_TG, ADMIN_ID_TG];
+const DELETED_ID_TG = 700100005;
+const ALL_TEST_IDS = [
+  BUYER_ID,
+  SELLER_ID_TG,
+  BLOCKED_ID_TG,
+  ADMIN_ID_TG,
+  DELETED_ID_TG,
+];
 
 const TEST_BOT_TOKEN = "123456:TEST-token-auth-route";
 
@@ -163,6 +170,32 @@ describe("POST /auth", () => {
     expect(body.sellerId).toBeNull();
     expect(body.sellerStatus).toBe("blocked");
     expect(body.blockedReason).toBe("Жалобы покупателей");
+
+    await app.close();
+  });
+
+  it("удалённый продавец: status=deleted → sellerId null, но sellerStatus/deleteReason/deletedAt различают его от незарегистрированного", async () => {
+    const deletedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    await db.insert(sellers).values({
+      telegramId: DELETED_ID_TG,
+      telegramUsername: "auth_test_deleted",
+      fullName: "Тест Удалённый",
+      phone: "+70000000005",
+      shopName: "Удалён-тест",
+      status: "deleted",
+      deleteReason: "Больше не продаю",
+      deletedAt,
+    });
+
+    const app = buildApp();
+    const response = await postAuth(app, signInitData(DELETED_ID_TG));
+
+    expect(response.statusCode).toBe(200);
+    const body = authResponseSchema.parse(response.json());
+    expect(body.sellerId).toBeNull();
+    expect(body.sellerStatus).toBe("deleted");
+    expect(body.deleteReason).toBe("Больше не продаю");
+    expect(body.deletedAt?.getTime()).toBe(deletedAt.getTime());
 
     await app.close();
   });

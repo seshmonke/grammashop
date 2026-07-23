@@ -187,6 +187,43 @@ describe("/platform/sellers", () => {
       await app.close();
     });
 
+    it("удаляет продавца с причиной (Спринт 37) и восстанавливает обратно в active", async () => {
+      const app = buildApp();
+      const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });
+      const sellerId = await seedSeller(SELLER_WITH_SUB_TG, "Магазин", true);
+
+      const deleteRes = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/status`,
+        adminToken,
+        { status: "deleted", reason: "Продавец попросил удалить" },
+      );
+      expect(deleteRes.statusCode).toBe(200);
+      expect(JSON.parse(deleteRes.body)).toMatchObject({
+        id: sellerId,
+        status: "deleted",
+        blockedReason: null,
+        deleteReason: "Продавец попросил удалить",
+      });
+
+      const restoreRes = await req(
+        app,
+        "PATCH",
+        `/platform/sellers/${sellerId}/status`,
+        adminToken,
+        { status: "active" },
+      );
+      expect(restoreRes.statusCode).toBe(200);
+      expect(JSON.parse(restoreRes.body)).toMatchObject({
+        id: sellerId,
+        status: "active",
+        blockedReason: null,
+        deleteReason: null,
+      });
+      await app.close();
+    });
+
     it("несуществующий продавец → 404", async () => {
       const app = buildApp();
       const adminToken = await tokenFor(app, { sellerId: null, isAdmin: true });

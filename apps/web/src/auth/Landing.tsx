@@ -5,6 +5,7 @@ import { getStartParam } from "../lib/telegram";
 import { StorefrontHome } from "../routes/storefront/StorefrontHome";
 import { Fork } from "./Fork";
 import { BlockedSeller } from "./BlockedSeller";
+import { DeletedSeller } from "./DeletedSeller";
 
 // Служебное значение start_param для формы регистрации магазина (см.
 // CONCEPT.md#оплата-подписки-продавцом, Спринт 21) — диплинк
@@ -22,7 +23,8 @@ const REGISTER_START_PARAM = "register";
 // регистрации (у пользователя с уже существующим магазином — в его
 // админку, CTA лендинга не должен приводить продавца на форму с 409). Без
 // start_param — по роли: заблокированный продавец на экран блокировки
-// (BlockedSeller, Спринт 32), иначе продавец в свою админку, админ в
+// (BlockedSeller, Спринт 32), удалённый — на экран восстановления
+// (DeletedSeller, Спринт 37), иначе продавец в свою админку, админ в
 // платформенную, покупатель без параметра и без роли — на экран-развилку
 // (Fork: «О платформе» / «Запустить магазин»).
 export function Landing() {
@@ -42,11 +44,14 @@ export function Landing() {
   if (startParam) {
     return <StorefrontHome />;
   }
-  // Заблокированный продавец (sellerId уже null от resolveAuthContext) —
-  // понятный экран вместо развилки Fork («никогда не регистрировался»),
-  // см. Спринт 32.
+  // Заблокированный/удалённый продавец (sellerId уже null от
+  // resolveAuthContext) — понятный экран вместо развилки Fork («никогда
+  // не регистрировался»), см. Спринт 32/37.
   if (session.sellerStatus === "blocked") {
     return <BlockedSeller reason={session.blockedReason} />;
+  }
+  if (session.sellerStatus === "deleted") {
+    return <DeletedSeller reason={session.deleteReason} deletedAt={session.deletedAt!} />;
   }
   if (session.sellerId != null) {
     return <Navigate to="/seller" replace />;

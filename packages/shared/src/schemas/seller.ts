@@ -41,3 +41,19 @@ export const updateSellerProfileRequestSchema = z.object({
 export type UpdateSellerProfileRequest = z.infer<
   typeof updateSellerProfileRequestSchema
 >;
+
+// Самоудаление магазина продавцом (Спринт 37) — POST /seller/delete,
+// причина обязательна (свободный текст, тот же паттерн, что причина
+// блокировки, Спринт 32).
+export const deleteSellerRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(500),
+});
+export type DeleteSellerRequest = z.infer<typeof deleteSellerRequestSchema>;
+
+// Самостоятельное восстановление — POST /seller/restore, без тела
+// (продавец резолвится по telegramId из сессии, не по sellerId — он
+// null, пока магазин deleted).
+export const restoreSellerResponseSchema = z.object({
+  id: z.number(),
+});
+export type RestoreSellerResponse = z.infer<typeof restoreSellerResponseSchema>;

@@ -1,17 +1,10 @@
 import "../env.js";
-import { eq } from "drizzle-orm";
-import { db } from "./client.js";
-import { sellers } from "./schema.js";
+import { anonymizeSeller } from "../services/anonymize-seller.service.js";
 
-// Обезличивание продавца (152-ФЗ) вместо удаления строки: `orders`
-// продавца хранят ПДн *покупателей* (снапшотом), каскадное удаление
-// `sellers` потянуло бы за собой чужие данные и историю заказов для
-// бухгалтерии. См. CONCEPT.md#персональные-данные-152-фз и
-// docs/tasks/23-pdn-and-cheap-debt.md.
-//
-// Обнуляет только fullName/phone/paymentDetails — telegramId,
-// telegramUsername, shopName не трогаются (аналогично тому, что
-// buyerTelegramId не обнуляется у покупателя).
+// CLI-обёртка над anonymizeSeller (см.
+// services/anonymize-seller.service.ts) — обезличить продавца вручную,
+// раньше истечения 30-дневного окна восстановления (обычная дорога —
+// автоматический воркер, sellers/finalize-deletion-worker.ts, Спринт 37).
 //
 // Запускать вручную: `pnpm --filter @grammashop/api tsx src/db/anonymize-seller.ts <sellerId>`
 // (в проде — скомпилированный `node dist/db/anonymize-seller.js <sellerId>`).
@@ -25,12 +18,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const [row] = await db
-    .update(sellers)
-    .set({ fullName: "", phone: "", paymentDetails: null })
-    .where(eq(sellers.id, sellerId))
-    .returning({ id: sellers.id, shopName: sellers.shopName });
-
+  const row = await anonymizeSeller(sellerId);
   if (!row) {
     throw new Error(`anonymize-seller: продавец #${sellerId} не найден`);
   }

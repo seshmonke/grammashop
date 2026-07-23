@@ -9,15 +9,19 @@ import { sellers } from "../db/schema.js";
 
 export interface AuthContext {
   telegramId: number;
-  // null — активного продавца нет: не зарегистрирован или заблокирован
-  // админом (blocked не получает продавцовскую админку — механизм отзыва
-  // доступа, см. очередь TASKS.md «Механизм отзыва сессии»).
+  // null — активного продавца нет: не зарегистрирован, заблокирован
+  // админом или удалён (blocked/deleted не получают продавцовскую
+  // админку — механизм отзыва доступа, см. очередь TASKS.md «Механизм
+  // отзыва сессии»).
   sellerId: number | null;
   // Статус продавца независимо от sellerId (null — продавца вообще нет,
-  // ни разу не регистрировался) — фронт различает «не зарегистрирован» и
-  // «заблокирован» (см. Спринт 32), sellerId при blocked всё равно null.
+  // ни разу не регистрировался) — фронт различает «не зарегистрирован»,
+  // «заблокирован» (Спринт 32) и «удалён» (Спринт 37), sellerId в обоих
+  // случаях всё равно null.
   sellerStatus: SellerStatus | null;
   blockedReason: string | null;
+  deleteReason: string | null;
+  deletedAt: Date | null;
   isAdmin: boolean;
 }
 
@@ -41,6 +45,8 @@ export async function resolveAuthContext(
       id: sellers.id,
       status: sellers.status,
       blockedReason: sellers.blockedReason,
+      deleteReason: sellers.deleteReason,
+      deletedAt: sellers.deletedAt,
     })
     .from(sellers)
     .where(eq(sellers.telegramId, telegramId));
@@ -50,6 +56,8 @@ export async function resolveAuthContext(
     sellerId: seller?.status === "active" ? seller.id : null,
     sellerStatus: seller?.status ?? null,
     blockedReason: seller?.blockedReason ?? null,
+    deleteReason: seller?.deleteReason ?? null,
+    deletedAt: seller?.deletedAt ?? null,
     isAdmin: parseAdminIds(process.env.ADMIN_TELEGRAM_IDS).has(telegramId),
   };
 }

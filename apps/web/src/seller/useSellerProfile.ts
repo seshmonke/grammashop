@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  restoreSellerResponseSchema,
   sellerProfileSchema,
   startSubscriptionPaymentResponseSchema,
+  type DeleteSellerRequest,
+  type RestoreSellerResponse,
   type SellerProfile,
   type StartSubscriptionPaymentResponse,
   type UpdateSellerProfileRequest,
@@ -50,6 +53,30 @@ export function usePaySubscription() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+    },
+  });
+}
+
+// POST /seller/delete (см. Спринт 37) — успех меняет способности сессии
+// (sellerId становится null, sellerStatus — "deleted"), тот же приём, что
+// и регистрация: полная перезагрузка страницы вместо точечной правки кэша
+// (см. RegisterForm.tsx, useSellerRegistration.ts).
+export function useDeleteSeller() {
+  return useMutation<void, unknown, DeleteSellerRequest>({
+    mutationFn: async (input) => {
+      await apiClient.post("/seller/delete", input);
+    },
+  });
+}
+
+// POST /seller/restore (см. Спринт 37) — самостоятельное восстановление
+// продавцом в пределах окна; вызывается с экрана DeletedSeller, до
+// появления sellerId в сессии.
+export function useRestoreSeller() {
+  return useMutation<RestoreSellerResponse, unknown, void>({
+    mutationFn: async () => {
+      const { data } = await apiClient.post("/seller/restore");
+      return restoreSellerResponseSchema.parse(data);
     },
   });
 }

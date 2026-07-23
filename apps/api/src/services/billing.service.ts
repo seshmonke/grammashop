@@ -210,8 +210,16 @@ export async function runRecurringBilling(now: Date = new Date()): Promise<{
       ykPaymentMethodId: subscriptions.ykPaymentMethodId,
     })
     .from(subscriptions)
+    // join sellers + фильтр по active — иначе рекуррент продолжает
+    // списывать карту продавца, которого заблокировали или удалили (пробел
+    // с blocked существовал ещё до Спринта 37, найден и закрыт заодно —
+    // см. docs/tasks/37-seller-soft-delete-and-monitoring-retry.md,
+    // «Анализ перед стартом»). Приостановка подписки при удалении иначе
+    // была бы фикцией.
+    .innerJoin(sellers, eq(sellers.id, subscriptions.sellerId))
     .where(
       and(
+        eq(sellers.status, "active"),
         isNotNull(subscriptions.ykPaymentMethodId),
         isNotNull(subscriptions.paidUntil),
         lte(subscriptions.paidUntil, now),

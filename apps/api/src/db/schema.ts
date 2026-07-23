@@ -58,6 +58,14 @@ export const sellers = pgTable("sellers", {
   // Свободный текст, вводит админ при блокировке (см. Спринт 32); при
   // возврате в active очищается — не история, а причина текущей блокировки.
   blockedReason: text("blocked_reason"),
+  // Удаление продавцом или админом, с окном восстановления (см. Спринт
+  // 37) — deletedAt/deleteReason по тому же принципу, что blockedReason:
+  // причина и момент текущего удаления, не история; очищаются при
+  // возврате в active. Окно восстановления вычисляется от deletedAt в
+  // коде (см. billing/finalize-seller-deletion), отдельного deleteAfter
+  // не заводим — не хранить производное значение.
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deleteReason: text("delete_reason"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

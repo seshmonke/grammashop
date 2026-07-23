@@ -12,7 +12,13 @@
 //
 // Настраивается переменными окружения самой Cloud Function (Yandex Cloud
 // консоль/CLI, не .env репозитория):
-//   HEALTH_URL                    — https://grammashop.online/health
+//   HEALTH_URL                    — https://grammashop.online/api/health
+//     (не голый /health — Caddy проксирует в apps/api только /api/*, см.
+//     docker/Caddyfile; /health без префикса уходит на apps/web и отдаёт
+//     HTML лендинга/приложения, а не JSON — найдено и исправлено
+//     23.07.2026, комментарий здесь был неверным с самого Спринта 27:
+//     res.json() на HTML падал, checkHealth() ловил исключение и писал
+//     health.ok=0 при живом бэкенде, отсюда ложный Alarm)
 //   YANDEX_MONITORING_API_KEY     — тот же сервис-аккаунт, что у бэкапа
 //   YANDEX_MONITORING_FOLDER_ID
 

@@ -17,6 +17,7 @@ import {
 const SELLER_STATUS_LABELS: Record<SellerStatus, string> = {
   active: "Активен",
   blocked: "Заблокирован",
+  deleted: "Удалён",
 };
 
 const SUBSCRIPTION_STATUS_LABELS: Record<SubscriptionStatus, string> = {
@@ -49,12 +50,17 @@ export function PlatformHome() {
   // единичку невозможно стереть, чтобы напечатать другую цифру (найдено
   // на проде). Разбор и клэмп — только в момент отправки.
   const [graceMonths, setGraceMonths] = useState<Record<number, string>>({});
-  // Инлайн-форма причины блокировки вместо модалки — в апе ещё нет ни
-  // одного Dialog-компонента, заводить его ради одной формы избыточно
-  // (см. «Анализ перед стартом», Спринт 32). blockingId === null — форма
-  // закрыта у всех карточек, открыта максимум у одной за раз.
-  const [blockingId, setBlockingId] = useState<number | null>(null);
-  const [blockReason, setBlockReason] = useState<Record<number, string>>({});
+  // Инлайн-форма причины блокировки/удаления вместо модалки — в апе ещё
+  // нет ни одного Dialog-компонента, заводить его ради одной формы
+  // избыточно (см. «Анализ перед стартом», Спринт 32). pending === null —
+  // форма закрыта у всех карточек, открыта максимум у одной за раз;
+  // target различает переход в blocked (Спринт 32) от deleted (Спринт 37)
+  // — оба требуют причины, обратный переход в active — нет.
+  const [pending, setPending] = useState<{
+    id: number;
+    target: "blocked" | "deleted";
+  } | null>(null);
+  const [actionReason, setActionReason] = useState<Record<number, string>>({});
 
   function monthsFor(sellerId: number): number {
     const parsed = Number(graceMonths[sellerId]);
@@ -71,26 +77,26 @@ export function PlatformHome() {
     grantGrace.mutate({ id: sellerId, months });
   }
 
-  function handleToggle(sellerId: number, current: SellerStatus) {
-    if (current === "active") {
-      setBlockingId(sellerId);
-      return;
-    }
+  function handleRestore(sellerId: number) {
     updateStatus.mutate({ id: sellerId, status: "active" });
   }
 
-  function handleConfirmBlock(sellerId: number) {
-    const reason = (blockReason[sellerId] ?? "").trim();
-    if (!reason) return;
+  function handleStartAction(sellerId: number, target: "blocked" | "deleted") {
+    setPending({ id: sellerId, target });
+  }
+
+  function handleConfirmAction(sellerId: number) {
+    const reason = (actionReason[sellerId] ?? "").trim();
+    if (!reason || pending?.id !== sellerId) return;
     updateStatus.mutate(
-      { id: sellerId, status: "blocked", reason },
-      { onSuccess: () => setBlockingId(null) },
+      { id: sellerId, status: pending.target, reason },
+      { onSuccess: () => setPending(null) },
     );
   }
 
-  function handleCancelBlock(sellerId: number) {
-    setBlockingId(null);
-    setBlockReason((r) => ({ ...r, [sellerId]: "" }));
+  function handleCancelAction(sellerId: number) {
+    setPending(null);
+    setActionReason((r) => ({ ...r, [sellerId]: "" }));
   }
 
   return (
@@ -163,30 +169,54 @@ export function PlatformHome() {
                   Выдать доступ
                 </Button>
               </div>
-              <Button
-                variant={seller.status === "active" ? "ghost" : "outline"}
-                size="sm"
-                disabled={updateStatus.isPending}
-                onClick={() => handleToggle(seller.id, seller.status)}
-              >
-                {seller.status === "active" ? "Заблокировать" : "Разблокировать"}
-              </Button>
+              {seller.status === "active" ? (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={updateStatus.isPending}
+                    onClick={() => handleStartAction(seller.id, "blocked")}
+                  >
+                    Заблокировать
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-tg-destructive"
+                    disabled={updateStatus.isPending}
+                    onClick={() => handleStartAction(seller.id, "deleted")}
+                  >
+                    Удалить
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={updateStatus.isPending}
+                  onClick={() => handleRestore(seller.id)}
+                >
+                  {seller.status === "blocked" ? "Разблокировать" : "Восстановить"}
+                </Button>
+              )}
             </div>
 
-            {blockingId === seller.id && (
+            {pending?.id === seller.id && (
               <div className="mt-3 space-y-2 border-t border-tg-separator pt-3">
                 <label
                   className="block text-sm text-tg-hint"
-                  htmlFor={`block-reason-${seller.id}`}
+                  htmlFor={`action-reason-${seller.id}`}
                 >
-                  Причина блокировки «{seller.shopName}» — покажем продавцу
+                  {pending.target === "blocked"
+                    ? `Причина блокировки «${seller.shopName}» — покажем продавцу`
+                    : `Причина удаления «${seller.shopName}» — покажем продавцу`}
                 </label>
                 <textarea
-                  id={`block-reason-${seller.id}`}
+                  id={`action-reason-${seller.id}`}
                   rows={2}
-                  value={blockReason[seller.id] ?? ""}
+                  value={actionReason[seller.id] ?? ""}
                   onChange={(e) =>
-                    setBlockReason((r) => ({ ...r, [seller.id]: e.target.value }))
+                    setActionReason((r) => ({ ...r, [seller.id]: e.target.value }))
                   }
                   className="w-full rounded-lg border border-tg-separator bg-tg-bg px-3 py-2 text-sm text-tg-text"
                 />
@@ -194,19 +224,20 @@ export function PlatformHome() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleCancelBlock(seller.id)}
+                    onClick={() => handleCancelAction(seller.id)}
                   >
                     Отмена
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    className={pending.target === "deleted" ? "text-tg-destructive" : undefined}
                     disabled={
-                      updateStatus.isPending || !(blockReason[seller.id] ?? "").trim()
+                      updateStatus.isPending || !(actionReason[seller.id] ?? "").trim()
                     }
-                    onClick={() => handleConfirmBlock(seller.id)}
+                    onClick={() => handleConfirmAction(seller.id)}
                   >
-                    Заблокировать
+                    {pending.target === "blocked" ? "Заблокировать" : "Удалить"}
                   </Button>
                 </div>
               </div>

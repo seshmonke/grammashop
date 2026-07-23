@@ -46,18 +46,31 @@ export async function updateSellerStatus(
   sellerId: number,
   status: SellerStatus,
   reason?: string,
-): Promise<{ id: number; status: SellerStatus; blockedReason: string | null } | null> {
+): Promise<{
+  id: number;
+  status: SellerStatus;
+  blockedReason: string | null;
+  deleteReason: string | null;
+} | null> {
   const [updated] = await db
     .update(sellers)
-    // reason имеет смысл только при переходе в blocked (обязательность на
-    // уровне UI, см. PlatformHome.tsx) — обратный переход в active всегда
-    // очищает поле, даже если reason по ошибке передан.
-    .set({ status, blockedReason: status === "blocked" ? (reason ?? null) : null })
+    // reason имеет смысл только при переходе в blocked/deleted
+    // (обязательность на уровне UI, см. PlatformHome.tsx) — любой другой
+    // целевой статус всегда очищает оба поля, даже если reason по ошибке
+    // передан. deletedAt — только при переходе в deleted (см. Спринт 37,
+    // окно восстановления считается от него).
+    .set({
+      status,
+      blockedReason: status === "blocked" ? (reason ?? null) : null,
+      deleteReason: status === "deleted" ? (reason ?? null) : null,
+      deletedAt: status === "deleted" ? new Date() : null,
+    })
     .where(eq(sellers.id, sellerId))
     .returning({
       id: sellers.id,
       status: sellers.status,
       blockedReason: sellers.blockedReason,
+      deleteReason: sellers.deleteReason,
     });
   return updated ?? null;
 }

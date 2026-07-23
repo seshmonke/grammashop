@@ -1,8 +1,10 @@
-import { eq } from "drizzle-orm";
-import type {
-  RegisterSellerRequest,
-  SellerProfile,
-  UpdateSellerProfileRequest,
+import { and, eq, isNotNull, lte } from "drizzle-orm";
+import {
+  restoreWindowEnd,
+  SELLER_RESTORE_WINDOW_DAYS,
+  type RegisterSellerRequest,
+  type SellerProfile,
+  type UpdateSellerProfileRequest,
 } from "@grammashop/shared";
 import { db } from "../db/client.js";
 import { sellers, subscriptions } from "../db/schema.js";
@@ -102,4 +104,70 @@ export async function updateSellerProfile(
     });
   if (!row) return null;
   return toProfile(row, await loadSubscription(sellerId));
+}
+
+// Самоудаление магазина продавцом (пока он ещё active, requireSellerId
+// это гарантирует на уровне роута) — паттерн идентичен блокировке
+// админом (Спринт 32), просто другой актёр и целевой статус.
+export async function deleteSeller(
+  sellerId: number,
+  reason: string,
+): Promise<{ id: number } | null> {
+  const [updated] = await db
+    .update(sellers)
+    .set({ status: "deleted", deletedAt: new Date(), deleteReason: reason })
+    .where(eq(sellers.id, sellerId))
+    .returning({ id: sellers.id });
+  return updated ?? null;
+}
+
+export type RestoreSellerResult =
+  | { ok: true; id: number }
+  | { ok: false; reason: "not-deleted" | "window-expired" };
+
+// Самостоятельное восстановление — резолвит продавца по telegramId, не по
+// sellerId (он null, пока магазин deleted, см. auth/access.ts). Админский
+// путь восстановления не проверяет окно — идёт через
+// platform.service.ts#updateSellerStatus по :id из URL, не по сессии.
+export async function restoreSeller(
+  telegramId: number,
+): Promise<RestoreSellerResult | null> {
+  const [seller] = await db
+    .select({ id: sellers.id, status: sellers.status, deletedAt: sellers.deletedAt })
+    .from(sellers)
+    .where(eq(sellers.telegramId, telegramId));
+  if (!seller) return null;
+  if (seller.status !== "deleted") {
+    return { ok: false, reason: "not-deleted" };
+  }
+
+  if (new Date() > restoreWindowEnd(seller.deletedAt!)) {
+    return { ok: false, reason: "window-expired" };
+  }
+
+  await db
+    .update(sellers)
+    .set({ status: "active", deletedAt: null, deleteReason: null })
+    .where(eq(sellers.id, seller.id));
+  return { ok: true, id: seller.id };
+}
+
+// Продавцы, у которых окно восстановления истекло — обезличиваются
+// автоматически (sellers/finalize-deletion-worker.ts). `now` — параметр
+// для тестируемости, как и у runRecurringBilling (billing.service.ts).
+export async function listExpiredDeletions(
+  now: Date = new Date(),
+): Promise<{ id: number }[]> {
+  const threshold = new Date(now);
+  threshold.setDate(threshold.getDate() - SELLER_RESTORE_WINDOW_DAYS);
+  return db
+    .select({ id: sellers.id })
+    .from(sellers)
+    .where(
+      and(
+        eq(sellers.status, "deleted"),
+        isNotNull(sellers.deletedAt),
+        lte(sellers.deletedAt, threshold),
+      ),
+    );
 }

@@ -23,6 +23,7 @@ async function seedDueSubscription(opts: {
   paidUntil: Date;
   status: "active" | "grace";
   withMethod?: boolean;
+  sellerStatus?: "active" | "blocked" | "deleted";
 }): Promise<number> {
   const [seller] = await db
     .insert(sellers)
@@ -32,7 +33,7 @@ async function seedDueSubscription(opts: {
       fullName: "ФИО",
       phone: "+70000000000",
       shopName: "Магазин",
-      status: "active",
+      status: opts.sellerStatus ?? "active",
     })
     .returning({ id: sellers.id });
   await db.insert(subscriptions).values({
@@ -133,4 +134,25 @@ describe("runRecurringBilling", () => {
     const sub = await subRow(sellerId);
     expect(sub?.status).toBe("active"); // без карты не переводим в grace
   });
+
+  // Спринт 37, «Анализ перед стартом»: до этого фикса свип не смотрел на
+  // sellers.status вовсе — заблокированный/удалённый продавец продолжал
+  // бы списываться по рекурренту.
+  it.each(["blocked", "deleted"] as const)(
+    "не списывает подписку продавца со статусом %s",
+    async (sellerStatus) => {
+      const sellerId = await seedDueSubscription({
+        paidUntil: daysAgo(1),
+        status: "active",
+        sellerStatus,
+      });
+
+      await runRecurringBilling();
+
+      expect(mockCreate).not.toHaveBeenCalled();
+      const sub = await subRow(sellerId);
+      expect(sub?.status).toBe("active");
+      expect(sub!.paidUntil!.getTime()).toBeLessThan(Date.now());
+    },
+  );
 });
