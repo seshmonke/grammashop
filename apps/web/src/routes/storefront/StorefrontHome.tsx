@@ -42,7 +42,12 @@ export function StorefrontHome() {
         {data.products.length === 0 ? (
           <ScreenState variant="inline" title="В этом магазине пока нет товаров." />
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(var(--card-min),1fr))] gap-2">
+          /* 600px = 4×136px (прежний --card-min) + 3×8px gap + 32px padding
+             — ширина, где 4 колонки не сжимают карточку ниже прежнего
+             минимума; Playwright-сверкой подтверждено, что это та же
+             точка, где старая auto-fill-сетка сама переходила 3→4 колонки
+             (см. docs/tasks/38-catalog-grid-breakpoints.md). */
+          <div className="grid grid-cols-2 min-[600px]:grid-cols-4 gap-2">
             {data.products.map((product) => (
               <ProductCard key={product.id} product={product} sellerId={data.sellerId} />
             ))}
