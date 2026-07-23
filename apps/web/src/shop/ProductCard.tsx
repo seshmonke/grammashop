@@ -43,10 +43,21 @@ export function ProductCard({
     >
       <div className="relative aspect-square w-full">
         {coverImage ? (
+          // absolute inset-0, а не h-full w-full в потоке — на некоторых
+          // WebView (реальный баг-репорт, Telegram Desktop) `aspect-ratio`
+          // контейнера ломается, если единственный прямой потомок — img с
+          // процентной высотой и собственным intrinsic aspect ratio:
+          // контейнер вместо квадрата подстраивается под пропорции фото
+          // (сервер не кропает фото в квадрат при загрузке — fit: "inside"
+          // в apps/api/src/images/pipeline.ts, см. backlog.md «Кадрирование
+          // фото товара»). Плейсхолдер ниже не подвержен — там прямой
+          // потомок div, не img, риска сама структура не создаёт. absolute
+          // достаёт размеры из уже посчитанного aspect-ratio родителя, а не
+          // навязывает свои — разрывает эту зависимость.
           <img
             src={coverImage.thumbnailUrl}
             alt=""
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-void-2">

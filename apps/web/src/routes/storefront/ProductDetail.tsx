@@ -19,8 +19,12 @@ function ImageCarousel({ images }: { images: ProductImage[] }) {
 
   if (images.length === 0) {
     return (
-      <div className="mb-4 flex aspect-square w-full items-center justify-center rounded-2xl bg-void-2">
-        <img src="/logo.svg" alt="" className="h-1/4 w-1/4 opacity-35" />
+      <div className="relative mb-4 aspect-square w-full rounded-2xl bg-void-2">
+        <img
+          src="/logo.svg"
+          alt=""
+          className="absolute left-1/2 top-1/2 h-1/4 w-1/4 -translate-x-1/2 -translate-y-1/2 opacity-35"
+        />
       </div>
     );
   }
@@ -38,11 +42,18 @@ function ImageCarousel({ images }: { images: ProductImage[] }) {
   }
 
   return (
-    <div className="relative mb-4">
+    <div className="relative mb-4 aspect-square w-full overflow-hidden rounded-2xl bg-tg-bg">
+      {/* Скролл-контейнер — absolute inset-0, а не в потоке: тот же приём,
+          что в ProductCard.tsx (см. комментарий там) — на некоторых WebView
+          `aspect-ratio` внешнего div ломается из-за img-потомков с
+          процентной высотой и собственным intrinsic ratio (сервер не
+          кропает фото в квадрат, см. backlog.md «Кадрирование фото
+          товара»). absolute достаёт размеры из уже посчитанного
+          aspect-ratio внешнего div, разрывая эту зависимость. */}
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="flex aspect-square w-full snap-x snap-mandatory overflow-x-auto rounded-2xl bg-tg-bg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="absolute inset-0 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {images.map((image) => (
           <img
