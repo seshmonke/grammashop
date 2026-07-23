@@ -4,6 +4,7 @@ import { RequireSeller, RequireAdmin } from "./auth/guards";
 import { ProductDetail } from "./routes/storefront/ProductDetail";
 import { CartPage } from "./routes/storefront/CartPage";
 import { CheckoutPage } from "./routes/storefront/CheckoutPage";
+import { OrdersPage } from "./routes/storefront/OrdersPage";
 import { SellerHome } from "./routes/seller/SellerHome";
 import { ProductForm } from "./routes/seller/ProductForm";
 import { SellerOrders } from "./routes/seller/SellerOrders";
@@ -21,6 +22,7 @@ export const router = createBrowserRouter([
   { path: "/product/:productId", element: <ProductDetail /> },
   { path: "/cart", element: <CartPage /> },
   { path: "/checkout", element: <CheckoutPage /> },
+  { path: "/orders", element: <OrdersPage /> },
   // Регистрация не под RequireSeller — у пользователя ещё нет продавца,
   // ровно её эта форма и создаёт (см. auth/Landing.tsx).
   { path: "/register", element: <RegisterForm /> },

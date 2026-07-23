@@ -1,4 +1,4 @@
-import { Store, ShoppingCart } from "lucide-react";
+import { Store, ShoppingCart, ClipboardList } from "lucide-react";
 import { useCart } from "../cart/cart-context";
 import { cartCount } from "../cart/cart-reducer";
 import { FloatingToolbar } from "./FloatingToolbar";
@@ -16,6 +16,7 @@ export function TabBar() {
       tabs={[
         { to: "/", label: "Каталог", icon: Store },
         { to: "/cart", label: "Корзина", icon: ShoppingCart, badge: count },
+        { to: "/orders", label: "Заказы", icon: ClipboardList },
       ]}
       blobClassName="bg-ice-on-theme/15"
       activeTextClassName="text-ice-on-theme"

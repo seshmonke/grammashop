@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
-import { createOrderResponseSchema, sellerOrderListResponseSchema } from "@grammashop/shared";
+import {
+  buyerOrderListResponseSchema,
+  createOrderResponseSchema,
+  sellerOrderListResponseSchema,
+} from "@grammashop/shared";
 import { buildApp } from "../app.js";
 import { db } from "../db/client.js";
 import { orderItems, orders, products, productVariants, sellers } from "../db/schema.js";
@@ -438,6 +442,101 @@ describe("GET /seller/orders", () => {
     expect(body.orders[0]!.buyerPhone).toBe("+79990001122");
     expect(body.orders[0]!.items).toHaveLength(1);
     expect(body.orders[0]!.items[0]!.quantity).toBe(2);
+    await app.close();
+  });
+});
+
+// GET /orders/mine — «мои заказы» покупателя (Спринт 34, см.
+// CONCEPT.md#каталог-и-заказы). Сквозной список по всем магазинам платформы:
+// фильтр по buyerTelegramId, а не sellerId, в отличие от /seller/orders.
+
+const MINE_BUYER_TG = 700600001;
+const MINE_OTHER_BUYER_TG = 700600002;
+const MINE_SELLER_A_TG = 700600003;
+const MINE_SELLER_B_TG = 700600004;
+const ALL_MINE_SELLER_TG = [MINE_SELLER_A_TG, MINE_SELLER_B_TG];
+
+async function mineTokenFor(app: ReturnType<typeof buildApp>, telegramId: number): Promise<string> {
+  await app.ready();
+  return app.jwt.sign({ telegramId, telegramUsername: null, sellerId: null, isAdmin: false });
+}
+
+async function createOrderFor(
+  sellerId: number,
+  buyerTelegramId: number,
+  variantId: number,
+): Promise<number> {
+  const [order] = await db
+    .insert(orders)
+    .values({
+      sellerId,
+      buyerTelegramId,
+      status: "new",
+      buyerFullName: "Покупатель",
+      buyerPhone: "+79990001122",
+      buyerAddress: "Москва, ул. Тестовая, 1",
+      buyerComment: null,
+      consentAt: new Date(),
+      totalKopecks: 300000,
+    })
+    .returning({ id: orders.id });
+  await db.insert(orderItems).values({
+    orderId: order!.id,
+    variantId,
+    productNameSnapshot: "Худи",
+    variantNameSnapshot: "M",
+    priceKopecks: 300000,
+    quantity: 1,
+  });
+  return order!.id;
+}
+
+describe("GET /orders/mine", () => {
+  beforeEach(async () => {
+    const stale = await db
+      .select({ id: sellers.id })
+      .from(sellers)
+      .where(inArray(sellers.telegramId, ALL_MINE_SELLER_TG));
+    if (stale.length) {
+      await db.delete(orders).where(
+        inArray(
+          orders.sellerId,
+          stale.map((s) => s.id),
+        ),
+      );
+    }
+    await db.delete(sellers).where(inArray(sellers.telegramId, ALL_MINE_SELLER_TG));
+  });
+
+  it("без JWT → 401", async () => {
+    const app = buildApp();
+    const res = await methodReq(app, "GET", "/orders/mine");
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("отдаёт заказы покупателя по всем магазинам, новые сверху, чужие заказы не попадают", async () => {
+    const app = buildApp();
+    const sellerAId = await seedSellerAdmin(MINE_SELLER_A_TG, "shop_a");
+    const sellerBId = await seedSellerAdmin(MINE_SELLER_B_TG, "shop_b");
+    const { variantId: variantA } = await seedProductWithVariant(sellerAId);
+    const { variantId: variantB } = await seedProductWithVariant(sellerBId);
+
+    const orderAId = await createOrderFor(sellerAId, MINE_BUYER_TG, variantA);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const orderBId = await createOrderFor(sellerBId, MINE_BUYER_TG, variantB);
+    await createOrderFor(sellerAId, MINE_OTHER_BUYER_TG, variantA);
+
+    const token = await mineTokenFor(app, MINE_BUYER_TG);
+    const res = await methodReq(app, "GET", "/orders/mine", token);
+
+    expect(res.statusCode).toBe(200);
+    const body = buyerOrderListResponseSchema.parse(res.json());
+    expect(body.orders.map((o) => o.id)).toEqual([orderBId, orderAId]);
+    expect(body.orders[0]!.shopName).toBe("Магазин");
+    expect(body.orders[0]!.sellerId).toBe(sellerBId);
+    expect(body.orders[1]!.sellerId).toBe(sellerAId);
+    expect(body.orders[0]!.items).toHaveLength(1);
     await app.close();
   });
 });

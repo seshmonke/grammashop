@@ -43,7 +43,7 @@ export const updateSellerStatusRequestSchema = z.object({
   status: sellerStatusSchema,
   // Причина — только при переходе в blocked (см. Спринт 32), свободный
   // текст, не фиксированный список (решение зафиксировано в диалоге).
-  reason: z.string().trim().min(1).optional(),
+  reason: z.string().trim().min(1).max(500).optional(),
 });
 export type UpdateSellerStatusRequest = z.infer<
   typeof updateSellerStatusRequestSchema

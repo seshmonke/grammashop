@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { eq } from "drizzle-orm";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { and, eq, gte, lte } from "drizzle-orm";
 import sharp from "sharp";
 
 // S3 — внешняя сеть, мокается на границе клиента (тот же приём, что и у
@@ -18,11 +18,26 @@ import { buildApp } from "../app.js";
 import { db } from "../db/client.js";
 import { productImages, products, sellers } from "../db/schema.js";
 
-let tgCounter = 700450000;
+const TG_START = 700450000;
+let tgCounter = TG_START;
 function nextTg(): number {
   tgCounter += 1;
   return tgCounter;
 }
+
+// Продавцы этого файла сеются с фиксированного tgCounter (не список
+// констант, как в других route-тестах, — счётчик неизвестного размера) и
+// без очистки не переживали повторный локальный `pnpm test`, падая на
+// sellers_telegram_id_unique. Диапазон обрезан сверху текущим значением
+// счётчика на момент afterAll (не голый gte) — иначе задевает продавцов
+// других файлов с telegram_id выше TG_START (например, orders.route.test.ts),
+// а их заказы блокируют удаление по FK (orders.seller_id — без onDelete
+// cascade, см. schema.ts). products/productImages каскадятся от sellers.
+afterAll(async () => {
+  await db
+    .delete(sellers)
+    .where(and(gte(sellers.telegramId, TG_START), lte(sellers.telegramId, tgCounter)));
+});
 
 async function seedSeller(telegramId: number, username: string) {
   const [seller] = await db

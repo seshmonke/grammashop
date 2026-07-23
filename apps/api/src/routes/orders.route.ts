@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import {
+  buyerOrderListResponseSchema,
   createOrderRequestSchema,
   createOrderResponseSchema,
   INSUFFICIENT_STOCK_ERROR,
@@ -8,7 +9,12 @@ import {
   updateOrderStatusRequestSchema,
 } from "@grammashop/shared";
 import { requireSellerId } from "../auth/access.js";
-import { createOrder, listSellerOrders, updateOrderStatus } from "../services/orders.service.js";
+import {
+  createOrder,
+  listBuyerOrders,
+  listSellerOrders,
+  updateOrderStatus,
+} from "../services/orders.service.js";
 
 // /seller/orders — тот же общий requireSellerId (auth/access.ts), что и в
 // routes/products.route.ts (покупатель/JWT без sellerId не может смотреть
@@ -57,6 +63,19 @@ export async function ordersRoutes(fastify: FastifyInstance): Promise<void> {
       }
 
       return reply.code(201).send(createOrderResponseSchema.parse(result.order));
+    },
+  );
+
+  // GET /orders/mine — «мои заказы» покупателя (см. CONCEPT.md#каталог-и-заказы,
+  // Спринт 34). Любой авторизованный Telegram-пользователь, не только
+  // владелец магазина — тот же принцип авторизации, что у чекаута выше
+  // (fastify.authenticate без requireSellerId).
+  fastify.get(
+    "/orders/mine",
+    { preHandler: [fastify.authenticate] },
+    async (request) => {
+      const list = await listBuyerOrders(request.user.telegramId);
+      return buyerOrderListResponseSchema.parse({ orders: list });
     },
   );
 

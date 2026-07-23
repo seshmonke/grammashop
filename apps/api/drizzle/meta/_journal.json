@@ -22,6 +22,13 @@
       "when": 1784754418521,
       "tag": "0002_late_phantom_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784781522075,
+      "tag": "0003_ambitious_vindicator",
+      "breakpoints": true
     }
   ]
 }

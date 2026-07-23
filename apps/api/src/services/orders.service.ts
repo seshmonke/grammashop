@@ -1,5 +1,11 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type { CreateOrderRequest, CreateOrderResponse, OrderStatus, SellerOrder } from "@grammashop/shared";
+import type {
+  BuyerOrder,
+  CreateOrderRequest,
+  CreateOrderResponse,
+  OrderStatus,
+  SellerOrder,
+} from "@grammashop/shared";
 import { ORDER_STATUS_TRANSITIONS } from "@grammashop/shared";
 import { db } from "../db/client.js";
 import { orderItems, orders, products, productVariants, sellers } from "../db/schema.js";
@@ -244,6 +250,30 @@ export async function listSellerOrders(sellerId: number): Promise<SellerOrder[]>
     })
     .from(orders)
     .where(eq(orders.sellerId, sellerId))
+    .orderBy(desc(orders.createdAt), desc(orders.id));
+
+  return Promise.all(
+    own.map(async (order) => ({ ...order, items: await loadOrderItems(order.id) })),
+  );
+}
+
+// «Мои заказы» покупателя (GET /orders/mine, Спринт 34). В отличие от
+// listSellerOrders фильтр по buyerTelegramId, не sellerId — список сквозной
+// по всем магазинам платформы (один бот, продавцы различаются start_param),
+// поэтому джойн с sellers за shopName — иначе плоский список нечитаем.
+export async function listBuyerOrders(buyerTelegramId: number): Promise<BuyerOrder[]> {
+  const own = await db
+    .select({
+      id: orders.id,
+      sellerId: orders.sellerId,
+      shopName: sellers.shopName,
+      status: orders.status,
+      totalKopecks: orders.totalKopecks,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .innerJoin(sellers, eq(orders.sellerId, sellers.id))
+    .where(eq(orders.buyerTelegramId, buyerTelegramId))
     .orderBy(desc(orders.createdAt), desc(orders.id));
 
   return Promise.all(

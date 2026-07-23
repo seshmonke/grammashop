@@ -93,3 +93,4 @@
 31. [Подготовка к первому живому продавцу](31-first-seller-readiness.md) — закрыт
 32. [UX блокировки продавца + флаки тестов](32-blocked-seller-ux.md) — закрыт
 33. [Bottom tab bar навигации витрины](33-bottom-tab-bar-navigation.md) — закрыт
+34. [Заказы покупателя + технический долг из ревью 23.07](34-buyer-orders-and-review-debt.md) — закрыт

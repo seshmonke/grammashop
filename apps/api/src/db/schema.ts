@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -108,59 +109,74 @@ export const subscriptionPayments = pgTable(
     uniqueIndex("subscription_payments_yk_payment_id_key").on(
       table.ykPaymentId,
     ),
+    index("subscription_payments_subscription_id_idx").on(
+      table.subscriptionId,
+    ),
   ],
 );
 
-export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
-  sellerId: integer("seller_id")
-    .notNull()
-    .references(() => sellers.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  sortPosition: integer("sort_position").notNull().default(0),
-  status: productStatusEnum("status").notNull().default("active"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+export const products = pgTable(
+  "products",
+  {
+    id: serial("id").primaryKey(),
+    sellerId: integer("seller_id")
+      .notNull()
+      .references(() => sellers.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    sortPosition: integer("sort_position").notNull().default(0),
+    status: productStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("products_seller_id_idx").on(table.sellerId)],
+);
 
-export const productVariants = pgTable("product_variants", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  priceKopecks: integer("price_kopecks").notNull(),
-  // nullable — зачёркнутая цена (скидка), см. CONCEPT.md#каталог-и-заказы.
-  oldPriceKopecks: integer("old_price_kopecks"),
-  // nullable — NULL = учёт остатка выключен, вариант всегда «в наличии».
-  stock: integer("stock"),
-  sortPosition: integer("sort_position").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+export const productVariants = pgTable(
+  "product_variants",
+  {
+    id: serial("id").primaryKey(),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    priceKopecks: integer("price_kopecks").notNull(),
+    // nullable — зачёркнутая цена (скидка), см. CONCEPT.md#каталог-и-заказы.
+    oldPriceKopecks: integer("old_price_kopecks"),
+    // nullable — NULL = учёт остатка выключен, вариант всегда «в наличии».
+    stock: integer("stock"),
+    sortPosition: integer("sort_position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [index("product_variants_product_id_idx").on(table.productId)],
+);
 
-export const productImages = pgTable("product_images", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "cascade" }),
-  s3Key: text("s3_key").notNull(),
-  sortPosition: integer("sort_position").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const productImages = pgTable(
+  "product_images",
+  {
+    id: serial("id").primaryKey(),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    s3Key: text("s3_key").notNull(),
+    sortPosition: integer("sort_position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("product_images_product_id_idx").on(table.productId)],
+);
 
 export const orders = pgTable(
   "orders",
@@ -200,20 +216,28 @@ export const orders = pgTable(
   },
   (table) => [
     uniqueIndex("orders_idempotency_key_unique").on(table.idempotencyKey),
+    index("orders_seller_id_idx").on(table.sellerId),
+    // Под GET /orders/mine (Спринт 34) — «мои заказы» покупателя фильтруются
+    // именно по этой колонке, не по sellerId.
+    index("orders_buyer_telegram_id_idx").on(table.buyerTelegramId),
   ],
 );
 
-export const orderItems = pgTable("order_items", {
-  id: serial("id").primaryKey(),
-  orderId: integer("order_id")
-    .notNull()
-    .references(() => orders.id, { onDelete: "cascade" }),
-  // SET NULL при удалении варианта — снапшоты ниже сохраняют историю.
-  variantId: integer("variant_id").references(() => productVariants.id, {
-    onDelete: "set null",
-  }),
-  productNameSnapshot: text("product_name_snapshot").notNull(),
-  variantNameSnapshot: text("variant_name_snapshot").notNull(),
-  priceKopecks: integer("price_kopecks").notNull(),
-  quantity: integer("quantity").notNull(),
-});
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    // SET NULL при удалении варианта — снапшоты ниже сохраняют историю.
+    variantId: integer("variant_id").references(() => productVariants.id, {
+      onDelete: "set null",
+    }),
+    productNameSnapshot: text("product_name_snapshot").notNull(),
+    variantNameSnapshot: text("variant_name_snapshot").notNull(),
+    priceKopecks: integer("price_kopecks").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (table) => [index("order_items_order_id_idx").on(table.orderId)],
+);

@@ -39,7 +39,7 @@ export type CheckoutFormFields = z.infer<typeof checkoutFormSchema>;
 // той же формы (после сетевой ошибки), не на каждый клик "Оформить заказ".
 // Сервер дедуплицирует по нему (уникальный индекс на orders.idempotency_key).
 export const createOrderRequestSchema = checkoutFormSchema.extend({
-  items: z.array(orderItemInputSchema).min(1),
+  items: z.array(orderItemInputSchema).min(1).max(100),
   idempotencyKey: z.string().uuid(),
 });
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
@@ -108,4 +108,28 @@ export const updateOrderStatusRequestSchema = z.object({
 });
 export type UpdateOrderStatusRequest = z.infer<
   typeof updateOrderStatusRequestSchema
+>;
+
+// «Мои заказы» покупателя (GET /orders/mine, Спринт 34) — в отличие от
+// sellerOrderSchema список сквозной по всем магазинам платформы (фильтр по
+// buyerTelegramId, не sellerId — один бот, разные продавцы через
+// start_param), поэтому на каждый заказ нужен идентификатор магазина.
+// ПДн покупателя (buyerFullName/phone/address) не дублируются в ответе —
+// это данные самого покупателя, он их только что вводил, эхо не нужно.
+export const buyerOrderSchema = z.object({
+  id: z.number(),
+  sellerId: z.number(),
+  shopName: z.string(),
+  status: orderStatusSchema,
+  totalKopecks: z.number().int(),
+  createdAt: z.coerce.date(),
+  items: z.array(orderItemSchema),
+});
+export type BuyerOrder = z.infer<typeof buyerOrderSchema>;
+
+export const buyerOrderListResponseSchema = z.object({
+  orders: z.array(buyerOrderSchema),
+});
+export type BuyerOrderListResponse = z.infer<
+  typeof buyerOrderListResponseSchema
 >;
