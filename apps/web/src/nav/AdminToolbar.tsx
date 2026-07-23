@@ -29,8 +29,8 @@ export function AdminToolbar() {
   return (
     <FloatingToolbar
       tabs={tabs}
-      blobClassName="bg-tg-accent/15"
-      activeTextClassName="text-tg-accent"
+      blobClassName="border border-tg-accent-on-theme-toolbar/50 bg-tg-accent/15"
+      activeTextClassName="text-tg-accent-on-theme-toolbar"
     />
   );
 }

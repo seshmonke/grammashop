@@ -66,6 +66,15 @@
   /* Тот же приём для фокус-кольца (см. docs/design/DESIGN_SYSTEM.md#реализация):
      сырой --ice обводкой на светлой теме Telegram даёт слишком бледный контур. */
   --ice-on-theme: color-mix(in srgb, var(--ice) 65%, var(--tg-text) 35%);
+  /* Активная вкладка floating toolbar (запрошено в диалоге, Спринт 36) —
+     тот же приём on-theme, но темнее: фон капсулы под ней — блюр
+     непредсказуемого контента каталога, а не собственная плоская
+     поверхность (surface/bg), обычного --ice-on-theme/--tg-accent не
+     хватает для контраста текста/обводки капли. --tg-accent такого
+     on-theme варианта раньше не имел вовсе (использовался сырым только в
+     AdminToolbar). */
+  --ice-on-theme-toolbar: color-mix(in srgb, var(--ice) 45%, var(--tg-text) 55%);
+  --tg-accent-on-theme-toolbar: color-mix(in srgb, var(--tg-accent) 55%, var(--tg-text) 45%);
 
   /* Флюидная сетка каталога (см.
      STACK.md#сетка-каталога--кросс-платформенная-вёрстка): --card-min
@@ -111,6 +120,8 @@
   --color-magenta-on-theme: var(--magenta-on-theme);
   --color-ice: var(--ice);
   --color-ice-on-theme: var(--ice-on-theme);
+  --color-ice-on-theme-toolbar: var(--ice-on-theme-toolbar);
+  --color-tg-accent-on-theme-toolbar: var(--tg-accent-on-theme-toolbar);
   --color-brand-rule: var(--brand-rule);
   --font-display: var(--display);
 }

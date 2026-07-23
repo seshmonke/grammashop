@@ -19,8 +19,8 @@ export function TabBar({ above }: { above?: ReactNode }) {
         { to: "/cart", label: "Корзина", icon: ShoppingCart, badge: count },
         { to: "/orders", label: "Заказы", icon: ClipboardList },
       ]}
-      blobClassName="bg-ice-on-theme/15"
-      activeTextClassName="text-ice-on-theme"
+      blobClassName="border border-ice-on-theme-toolbar/50 bg-ice-on-theme/15"
+      activeTextClassName="text-ice-on-theme-toolbar"
       above={above}
     />
   );
