@@ -115,6 +115,32 @@ IT/интернет-проектах (не универсального), т.к.
 
 ## v1 — продукт и UX
 
+### Форма кнопок в админках
+
+Заведено 23.07.2026 по прямому запросу пользователя, решение —
+`/grill-me`, зафиксировано в
+[DESIGN_SYSTEM.md#реализация](../design/DESIGN_SYSTEM.md#реализация)
+(раздел «Минимальный ДНК в админках», подраздел «Форма `<Button>` в
+админках»). `components/ui/button.tsx` — нетронутая shadcn-заготовка
+(мелкий `rounded-md`, 32-40px высоты, цвет `variant="default"`
+дублируется `className`-оверрайдом на каждом вызове вместо самого
+компонента). Задачи:
+
+- `rounded-md` → `rounded-xl` на всех вариантах.
+- `default` (главное действие экрана) → 44px, `sm` (построчные
+  действия в списках) не трогаем; свериться и поправить расхождение —
+  `SellerHome.tsx` («Добавить») сейчас на `sm`, должно быть `default`.
+- `font-medium` → `font-semibold`, шрифт (не `font-display`) не
+  меняем.
+- `variant="default"` — magenta переезжает в сам компонент, убрать
+  дублирующие `className`-оверрайды в `RegisterForm.tsx`/
+  `SellerProfile.tsx`/`ProductForm.tsx`/`DeletedSeller.tsx`.
+- `--background`/`--accent`/`--input`/`--ring` в `index.css` — реальный
+  баг, не только блёкло: `outline` на тёмной теме Telegram рендерится
+  белым прямоугольником. `outline`/`ghost` → `--tg-surface`/
+  `--tg-text`/`--tg-separator`, `focus-visible:ring-ring` →
+  `--ice-on-theme`.
+
 ### Отсутствие max-width у контента Cart/Seller/Platform
 
 Всплыло 23.07.2026 при разборе ширины floating toolbar, не решалось.
