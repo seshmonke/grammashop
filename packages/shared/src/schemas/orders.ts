@@ -120,6 +120,7 @@ export const buyerOrderSchema = z.object({
   id: z.number(),
   sellerId: z.number(),
   shopName: z.string(),
+  telegramUsername: z.string(),
   status: orderStatusSchema,
   totalKopecks: z.number().int(),
   createdAt: z.coerce.date(),

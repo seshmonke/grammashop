@@ -16,7 +16,8 @@
     "verify:yookassa": "tsx src/yookassa/verify.ts",
     "backup:db": "tsx src/db/backup.ts",
     "restore-check:db": "tsx src/db/restore-check.ts",
-    "anonymize-seller:db": "tsx src/db/anonymize-seller.ts"
+    "anonymize-seller:db": "tsx src/db/anonymize-seller.ts",
+    "anonymize-buyer:db": "tsx src/db/anonymize-buyer.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1088.0",

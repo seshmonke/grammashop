@@ -534,6 +534,7 @@ describe("GET /orders/mine", () => {
     const body = buyerOrderListResponseSchema.parse(res.json());
     expect(body.orders.map((o) => o.id)).toEqual([orderBId, orderAId]);
     expect(body.orders[0]!.shopName).toBe("Магазин");
+    expect(body.orders[0]!.telegramUsername).toBe("shop_b");
     expect(body.orders[0]!.sellerId).toBe(sellerBId);
     expect(body.orders[1]!.sellerId).toBe(sellerAId);
     expect(body.orders[0]!.items).toHaveLength(1);

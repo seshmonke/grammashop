@@ -74,6 +74,15 @@ export function OrdersPage() {
                 {formatPrice(order.totalKopecks)}
               </span>
             </div>
+
+            <a
+              href={`https://t.me/${order.telegramUsername}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 block rounded-xl border border-tg-separator py-2 text-center text-sm font-medium text-tg-link"
+            >
+              Написать продавцу
+            </a>
           </div>
         ))}
       </main>

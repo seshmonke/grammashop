@@ -267,6 +267,7 @@ export async function listBuyerOrders(buyerTelegramId: number): Promise<BuyerOrd
       id: orders.id,
       sellerId: orders.sellerId,
       shopName: sellers.shopName,
+      telegramUsername: sellers.telegramUsername,
       status: orders.status,
       totalKopecks: orders.totalKopecks,
       createdAt: orders.createdAt,
