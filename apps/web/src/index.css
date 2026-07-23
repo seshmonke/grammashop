@@ -142,13 +142,24 @@ button:focus-visible {
   border-radius: 8px;
 }
 
-/* Единственная стеклянная поверхность — плавающая шапка магазина. На
-   карточках стекла нет намеренно (blur на каждом элементе скролла лагает в
-   WebView). translucent от текущей темы + blur того, что за ней. */
+/* Стеклянная поверхность постоянного «шасси» экрана — шапка раздела и
+   floating toolbar (см. .tg-glass-toolbar ниже), не карточки контента (blur
+   на каждом элементе скролла лагает в WebView). translucent от текущей
+   темы + blur того, что за ней. */
 .tg-glass {
   background-color: color-mix(in srgb, var(--tg-bg) 72%, transparent);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+/* Капсула floating toolbar — заметно прозрачнее .tg-glass (запрошено в
+   диалоге, Спринт 36): под ней всегда контент экрана, а не текст в шапке,
+   которому нужен твёрдый фон для читаемости — можно сильнее в liquid
+   glass. */
+.tg-glass-toolbar {
+  background-color: color-mix(in srgb, var(--tg-bg) 45%, transparent);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
 }
 
 /* Y2K-приёмы витрины (см. docs/design/DESIGN_SYSTEM.md#приёмы) — glow

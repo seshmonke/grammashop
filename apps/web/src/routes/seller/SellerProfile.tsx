@@ -144,14 +144,14 @@ export function SellerProfile() {
   }
 
   return (
-    <div className="min-h-dvh bg-tg-bg">
+    <div className="flex min-h-dvh flex-col bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <h1 className="y2k-heading font-display text-lg text-tg-text">
           Настройки магазина
         </h1>
       </header>
 
-      <main className="space-y-3 p-4 pb-24">
+      <main className="flex-1 space-y-3 p-4">
         {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
           <ScreenState variant="inline" title="Не удалось загрузить профиль." />

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Store, ShoppingCart, ClipboardList } from "lucide-react";
 import { useCart } from "../cart/cart-context";
 import { cartCount } from "../cart/cart-reducer";
@@ -7,7 +8,7 @@ import { FloatingToolbar } from "./FloatingToolbar";
 // Рендерится только на корневых экранах раздела (StorefrontHome, CartPage) —
 // на drill-down (ProductDetail, CheckoutPage) страницы её просто не
 // подключают, отдельного скрытия по pathname не нужно.
-export function TabBar() {
+export function TabBar({ above }: { above?: ReactNode }) {
   const { state } = useCart();
   const count = cartCount(state);
 
@@ -20,6 +21,7 @@ export function TabBar() {
       ]}
       blobClassName="bg-ice-on-theme/15"
       activeTextClassName="text-ice-on-theme"
+      above={above}
     />
   );
 }

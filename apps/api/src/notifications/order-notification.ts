@@ -1,10 +1,16 @@
 import { eq } from "drizzle-orm";
 import * as Sentry from "@sentry/node";
+import { InlineKeyboard } from "grammy";
+import { encodeOrderStartParam } from "@grammashop/shared";
 import { escapeHtml } from "../bot/escape-html.js";
 import { getBot } from "../bot/client.js";
 import { db } from "../db/client.js";
 import { orderItems, orders, sellers } from "../db/schema.js";
 import { boss, ORDER_NOTIFICATION_QUEUE } from "../queue/client.js";
+
+// Тот же t.me-паттерн, что у MINI_APP_URL в bot/start-handler.ts, но с
+// диплинком на конкретный заказ вместо голого запуска Mini App.
+const MINI_APP_URL = "https://t.me/grammashopbot/shop";
 
 // Уведомление продавца о новом заказе через платформенного бота (см.
 // CONCEPT.md#каталог-и-заказы, STACK.md#telegram-бот) — фоновая job на
@@ -103,7 +109,13 @@ export async function sendOrderNotification(orderId: number): Promise<void> {
   await getBot().api.sendMessage(
     loaded.sellerTelegramId,
     formatOrderNotificationText(loaded.data),
-    { parse_mode: "HTML" },
+    {
+      parse_mode: "HTML",
+      reply_markup: new InlineKeyboard().url(
+        "📦 Открыть заказ",
+        `${MINI_APP_URL}?startapp=${encodeOrderStartParam(orderId)}`,
+      ),
+    },
   );
 }
 

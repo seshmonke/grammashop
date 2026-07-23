@@ -55,7 +55,7 @@ export function SellerHome() {
   }
 
   return (
-    <div className="min-h-dvh bg-tg-bg">
+    <div className="flex min-h-dvh flex-col bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <h1 className="y2k-heading font-display text-lg text-tg-text">Товары</h1>
@@ -74,7 +74,7 @@ export function SellerHome() {
         </div>
       </header>
 
-      <main className="space-y-3 p-4 pb-24">
+      <main className="flex-1 space-y-3 p-4">
         <div className="rounded-2xl bg-tg-surface p-4">
           <h2 className="font-medium text-tg-text">Заливка из Excel</h2>
           <p className="mt-1 text-sm text-tg-hint">

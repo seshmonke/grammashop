@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { ORDER_STATUS_TRANSITIONS, type OrderStatus } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "../../lib/money";
@@ -49,8 +51,20 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
 });
 
 export function SellerOrders() {
+  const { orderId: highlightedOrderId } = useParams();
   const { data: orders, isLoading, isError } = useSellerOrders();
   const updateStatus = useUpdateOrderStatus();
+
+  // Диплинк из уведомления продавцу (Landing.tsx, start_param `o<orderId>`)
+  // — отдельного экрана одного заказа нет (список и так короткий, без
+  // пагинации), вместо этого скроллим к нужной карточке в общем списке.
+  useEffect(() => {
+    if (!highlightedOrderId || !orders) return;
+    document.getElementById(`order-${highlightedOrderId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [highlightedOrderId, orders]);
 
   function handleTransition(orderId: number, status: OrderStatus) {
     if (status === "canceled" && !confirm("Отменить заказ? Остаток вернётся на склад.")) {
@@ -60,13 +74,13 @@ export function SellerOrders() {
   }
 
   return (
-    <div className="min-h-dvh bg-tg-bg">
+    <div className="flex min-h-dvh flex-col bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <h1 className="y2k-heading font-display text-lg text-tg-text">Заказы</h1>
         {orders && <p className="text-sm text-tg-hint">{orders.length}</p>}
       </header>
 
-      <main className="space-y-3 p-4 pb-24">
+      <main className="flex-1 space-y-3 p-4">
         {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
           <ScreenState variant="inline" title="Не удалось загрузить заказы." />
@@ -75,7 +89,13 @@ export function SellerOrders() {
           <ScreenState variant="inline" title="Пока нет ни одного заказа." />
         )}
         {orders?.map((order) => (
-          <div key={order.id} className="rounded-2xl bg-tg-surface p-4">
+          <div
+            key={order.id}
+            id={`order-${order.id}`}
+            className={`rounded-2xl bg-tg-surface p-4 ${
+              String(order.id) === highlightedOrderId ? "ring-2 ring-tg-accent" : ""
+            }`}
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-medium text-tg-text">Заказ №{order.id}</p>

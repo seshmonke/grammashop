@@ -151,10 +151,17 @@ describe("sendOrderNotification", () => {
     await sendOrderNotification(orderId);
 
     expect(sendMessage).toHaveBeenCalledTimes(1);
-    const [chatId, text, options] = sendMessage.mock.calls[0]!;
+    const [chatId, text, options] = sendMessage.mock.calls[0]! as [
+      number,
+      string,
+      { parse_mode: string; reply_markup: { inline_keyboard: Array<Array<{ url?: string }>> } },
+    ];
     expect(chatId).toBe(SELLER_TG);
     expect(text).toContain("Худи (M) × 2");
-    expect(options).toEqual({ parse_mode: "HTML" });
+    expect(options.parse_mode).toBe("HTML");
+    expect(options.reply_markup.inline_keyboard[0]![0]!.url).toBe(
+      `https://t.me/grammashopbot/shop?startapp=o${orderId}`,
+    );
   });
 
   it("несуществующий заказ — ничего не отправляет", async () => {

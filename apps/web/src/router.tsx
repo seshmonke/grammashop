@@ -66,6 +66,16 @@ export const router = createBrowserRouter([
       </RequireSeller>
     ),
   },
+  // Диплинк на конкретный заказ (start_param `o<orderId>`, Landing.tsx) —
+  // тот же список, только со скроллом и подсветкой нужной карточки.
+  {
+    path: "/seller/orders/:orderId",
+    element: (
+      <RequireSeller>
+        <SellerOrders />
+      </RequireSeller>
+    ),
+  },
   {
     path: "/platform",
     element: (

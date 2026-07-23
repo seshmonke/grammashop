@@ -28,7 +28,7 @@ export function StorefrontHome() {
   }
 
   return (
-    <div className="y2k-scanlines min-h-dvh bg-tg-bg">
+    <div className="y2k-scanlines flex min-h-dvh flex-col bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <h1 className="y2k-heading font-display truncate text-lg text-tg-text">
           {data.shopName}
@@ -38,7 +38,7 @@ export function StorefrontHome() {
         )}
       </header>
 
-      <main className="mx-auto max-w-(--catalog-max-width) p-4 pb-24">
+      <main className="mx-auto max-w-(--catalog-max-width) flex-1 p-4">
         {data.products.length === 0 ? (
           <ScreenState variant="inline" title="В этом магазине пока нет товаров." />
         ) : (

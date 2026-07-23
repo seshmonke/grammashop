@@ -12,7 +12,7 @@ export function CartPage() {
   const { state, dispatch } = useCart();
 
   return (
-    <div className="y2k-scanlines min-h-dvh bg-tg-bg">
+    <div className="y2k-scanlines flex min-h-dvh flex-col bg-tg-bg">
       <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <Link to="/" className="text-tg-link">
           ← Назад
@@ -20,7 +20,7 @@ export function CartPage() {
         <h1 className="y2k-heading font-display mt-1 text-lg text-tg-text">Корзина</h1>
       </header>
 
-      <main className={`p-4 ${state.items.length > 0 ? "pb-44" : "pb-28"}`}>
+      <main className="flex-1 p-4">
         {state.items.length === 0 ? (
           <ScreenState variant="inline" title="Корзина пуста." action={{ to: "/", label: "В магазин" }} />
         ) : (
@@ -93,26 +93,29 @@ export function CartPage() {
         )}
       </main>
 
-      {state.items.length > 0 && (
-        // Поднято над плавающим TabBar (см. ниже) — иначе докнутая сводка
-        // чекаута перекрывала бы пилюлю навигации. Отступ подобран под
-        // фактическую высоту TabBar, проверено визуально (Спринт 33).
-        <div className="tg-glass fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 border-t border-tg-separator px-4 pb-3 pt-3">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-tg-hint">Итого</span>
-            <span className="y2k-price-glow text-lg font-semibold text-magenta-on-theme tabular-nums">
-              {formatPrice(cartTotalKopecks(state))}
-            </span>
-          </div>
-          <Link
-            to="/checkout"
-            className="y2k-cta-glow block rounded-2xl bg-magenta py-3 text-center font-medium text-white"
-          >
-            Оформить заказ
-          </Link>
-        </div>
-      )}
-      <TabBar />
+      <TabBar
+        above={
+          state.items.length > 0 ? (
+            // Обычный блок потока внутри sticky-подвала TabBar (Спринт 36) —
+            // не отдельный fixed с magic-number отступом над капсулой (см.
+            // FloatingToolbar.tsx), стек сам ставит его выше капсулы.
+            <div className="tg-glass border-t border-tg-separator px-4 pb-3 pt-3">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-tg-hint">Итого</span>
+                <span className="y2k-price-glow text-lg font-semibold text-magenta-on-theme tabular-nums">
+                  {formatPrice(cartTotalKopecks(state))}
+                </span>
+              </div>
+              <Link
+                to="/checkout"
+                className="y2k-cta-glow block rounded-2xl bg-magenta py-3 text-center font-medium text-white"
+              >
+                Оформить заказ
+              </Link>
+            </div>
+          ) : undefined
+        }
+      />
     </div>
   );
 }

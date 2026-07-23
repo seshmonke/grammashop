@@ -193,11 +193,11 @@ export function ProductDetail() {
   const product = data?.products.find((p) => String(p.id) === productId);
 
   return (
-    <div className="y2k-scanlines min-h-dvh bg-tg-bg">
+    <div className="y2k-scanlines flex min-h-dvh flex-col bg-tg-bg">
       {/* Кнопка "назад" убрана — навигация теперь через TabBar внизу
           (см. DESIGN_SYSTEM.md#навигация--floating-toolbar): "Каталог"
           возвращает на витрину, "Корзина" ведёт в корзину. */}
-      <main className="px-4 pb-28 pt-[calc(1rem+env(safe-area-inset-top))]">
+      <main className="flex-1 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         {isLoading ? (
           <ScreenState variant="inline" title="Загрузка…" />
         ) : isError || !product || !data ? (
