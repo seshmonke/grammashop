@@ -24,6 +24,22 @@
      Спринт 29). */
   --tg-success: #10b981;
 
+  /* Верхний отступ шапок — сумма двух зон, не максимум (найдено на живом
+     тесте перебором, см. docs/design/DESIGN_SYSTEM.md): плавающие кнопки
+     Telegram (Close/шеврон/«...») в fullscreen (Bot API 8.0+) сидят НИЖЕ
+     выреза устройства, а не вместо него — max(54px выреза, 46px зоны
+     кнопок) = 66px с базовым паддингом всё равно оставлял заголовок под
+     Close, сумма (54+46=100px+база) — нет. env(safe-area-inset-top) в
+     этом WebView (встроенный в Telegram-клиент) реально отдаёт 0 даже с
+     вырезом/Dynamic Island — оставлен в max() ниже как фолбэк на случай
+     клиента, где он всё же работает, а --tg-safe-area-inset-top недоступен
+     (обычный браузер, не Telegram). --tg-content-safe-area-inset-top
+     клиент прокидывает сам (тот же механизм, что и --tg-theme-*). */
+  --tg-header-safe-top: calc(
+    max(env(safe-area-inset-top), var(--tg-safe-area-inset-top, 0px)) +
+      var(--tg-content-safe-area-inset-top, 0px)
+  );
+
   /* shadcn-токен (админки — плоско, без темы клиента), оставлен как был —
      единственный, кто ещё его использует (HealthStatus.tsx). Остальные
      shadcn-заготовки (background/foreground/primary/accent/input/ring)

@@ -208,7 +208,7 @@ export function ProductDetail() {
       {/* Кнопка "назад" убрана — навигация теперь через TabBar внизу
           (см. DESIGN_SYSTEM.md#навигация--floating-toolbar): "Каталог"
           возвращает на витрину, "Корзина" ведёт в корзину. */}
-      <main className="flex-1 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+      <main className="flex-1 px-4 pb-4 pt-[calc(1rem+var(--tg-header-safe-top))]">
         {isLoading ? (
           <ScreenState variant="inline" title="Загрузка…" />
         ) : isError || !product || !data ? (

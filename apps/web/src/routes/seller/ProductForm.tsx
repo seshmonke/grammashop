@@ -303,7 +303,7 @@ export function ProductForm() {
 
   return (
     <div className="min-h-dvh bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+var(--tg-header-safe-top))]">
         <Button asChild variant="outline" size="sm">
           <Link to="/seller">Товары</Link>
         </Button>

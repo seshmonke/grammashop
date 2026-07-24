@@ -75,7 +75,7 @@ export function SellerOrders() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+var(--tg-header-safe-top))]">
         <h1 className="y2k-heading font-display text-lg text-tg-text">Заказы</h1>
         {orders && <p className="text-sm text-tg-hint">{orders.length}</p>}
       </header>

@@ -39,7 +39,7 @@ function fieldBorderClass(touched: boolean, hasError: boolean): string {
 
 function SuccessScreen({ order }: { order: CreateOrderResponse }) {
   return (
-    <div className="y2k-scanlines min-h-dvh bg-tg-bg px-4 pb-8 pt-[calc(1.5rem+env(safe-area-inset-top))]">
+    <div className="y2k-scanlines min-h-dvh bg-tg-bg px-4 pb-8 pt-[calc(1.5rem+var(--tg-header-safe-top))]">
       <h1 className="y2k-heading font-display text-xl text-tg-text">
         Заказ №{order.id} оформлен
       </h1>
@@ -124,7 +124,7 @@ export function CheckoutPage() {
 
   return (
     <div className="y2k-scanlines min-h-dvh bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+var(--tg-header-safe-top))]">
         <button type="button" onClick={() => navigate(-1)} className="text-tg-link">
           ← Назад
         </button>
