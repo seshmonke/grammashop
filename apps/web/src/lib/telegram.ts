@@ -24,11 +24,13 @@ export interface TelegramContactResponse {
 
 // Данные события `contactRequested` — та же форма, что и второй аргумент
 // колбэка requestContact (см. requestContactPhone ниже), плюс `status` для
-// различения отмены. Официальная документация Telegram описывает колбэк
-// requestContact как принимающий только boolean, но независимо от неё
-// (обсуждение типов @types/telegram-web-app, пакет @twa-dev/types) реальные
-// клиенты передают и второй аргумент, и параллельно шлют это же событие —
-// какой канал сработает, зависит от версии клиента, поэтому слушаем оба.
+// различения отмены. По официальной документации (core.telegram.org/api/
+// web-events) это событие несёт только статус (`{status: "sent"}`), без
+// самого контакта — номер телефона приходит исключительно вторым
+// аргументом колбэка requestContact. Событие всё равно слушаем (на случай
+// версий клиента, которые действительно кладут контакт и сюда), но
+// используем только если в нём реально есть номер — иначе промис
+// разрешится в null раньше, чем колбэк успевает принести настоящий номер.
 export interface TelegramContactEventData extends TelegramContactResponse {
   status?: "sent" | "cancelled";
 }
@@ -104,7 +106,8 @@ export function requestContactPhone(): Promise<string | null> {
   return new Promise((resolve) => {
     let settled = false;
     const eventHandler = (data?: TelegramContactEventData) => {
-      finish(data?.responseUnsafe?.contact?.phone_number ?? null);
+      const phone = data?.responseUnsafe?.contact?.phone_number;
+      if (phone) finish(phone);
     };
     function finish(phone: string | null) {
       if (settled) return;

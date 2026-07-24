@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useSession } from "../../auth/session-context";
@@ -22,6 +22,7 @@ export function RegisterForm() {
   const [phone, setPhone] = useState("+7");
   const [consent, setConsent] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<TouchableField, boolean>>>({});
+  const requestedContactRef = useRef(false);
 
   // Живая валидация — та же Zod-схема, что и бэк (см.
   // validate-register-form.ts). Ошибки показываются только для тронутых
@@ -35,13 +36,24 @@ export function RegisterForm() {
   useEffect(() => {
     // Нативный попап Telegram — номер из аккаунта вместо ручного ввода.
     // Отказ/недоступность попапа — просто пустое поле, ничего не ломает.
-    let active = true;
+    //
+    // requestedContactRef, а не cleanup-флаг: сам системный попап нельзя
+    // открыть дважды (клиент Telegram синхронно кидает
+    // "WebAppContactRequested" на повторный вызов, пока первый ещё не
+    // закрыт) — под React StrictMode эффект в dev выполняется дважды
+    // (mount → cleanup → mount) без реального размонтирования компонента.
+    // cleanup-флаг там ломает и первый вызов (он же настоящий, с которым
+    // взаимодействует пользователь) — его результат приходит уже после
+    // того, как флаг сброшен. Ref переживает оба захода и гарантирует
+    // ровно один вызов popup'а на инстанс формы.
+    if (requestedContactRef.current) return;
+    requestedContactRef.current = true;
     requestContactPhone().then((value) => {
-      if (active && value) setPhone(value);
+      // contact.phone_number в Bot API приходит без "+" (код страны +
+      // номер, см. core.telegram.org/api/bots/webapps) — приводим к тому
+      // же виду, что и дефолт ручного ввода ("+7...").
+      if (value) setPhone(value.startsWith("+") ? value : `+${value}`);
     });
-    return () => {
-      active = false;
-    };
   }, []);
 
   if (session.sellerId != null) {
