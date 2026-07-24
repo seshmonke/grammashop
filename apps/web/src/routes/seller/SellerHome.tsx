@@ -75,6 +75,21 @@ export function SellerHome() {
       </header>
 
       <main className="flex-1 space-y-3 p-4">
+        {profile && (profile.fullName === "" || profile.phone === "") && (
+          <div className="rounded-2xl bg-tg-surface p-4">
+            <p className="font-medium text-tg-text">
+              Витрина скрыта — дозаполните профиль
+            </p>
+            <p className="mt-1 text-sm text-tg-hint">
+              ФИО и телефон продавца не заполнены, покупатели не видят
+              магазин.
+            </p>
+            <Button asChild variant="outline" size="sm" className="mt-3">
+              <Link to="/seller/profile">Заполнить в настройках</Link>
+            </Button>
+          </div>
+        )}
+
         <div className="rounded-2xl bg-tg-surface p-4">
           <h2 className="font-medium text-tg-text">Заливка из Excel</h2>
           <p className="mt-1 text-sm text-tg-hint">

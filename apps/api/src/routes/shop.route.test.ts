@@ -206,6 +206,31 @@ describe("GET /shop/:sellerId", () => {
     await app.close();
   });
 
+  it("восстановлен после обезличивания, fullName/phone пусты → 404 (витрина скрыта)", async () => {
+    const app = buildApp();
+    const [seller] = await db
+      .insert(sellers)
+      .values({
+        telegramId: BLOCKED_TG,
+        telegramUsername: "anonymized_restored",
+        fullName: "",
+        phone: "",
+        shopName: "Восстановленный магазин",
+        status: "active",
+      })
+      .returning({ id: sellers.id });
+    await db.insert(subscriptions).values({
+      sellerId: seller!.id,
+      tier: "tier1",
+      status: "active",
+      paidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+
+    const res = await get(app, `/shop/${seller!.id}`, await tokenFor(app));
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
   it("не отдаёт ПДн продавца (ФИО/телефон/реквизиты) в теле", async () => {
     const app = buildApp();
     const sellerId = await seedActiveShop();

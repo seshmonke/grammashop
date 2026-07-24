@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import type { ShopCatalogResponse, ShopProduct } from "@grammashop/shared";
 import { db } from "../db/client.js";
 import { products, productVariants, sellers, subscriptions } from "../db/schema.js";
@@ -6,10 +6,12 @@ import { loadImagesForProducts } from "../images/product-image-lookup.js";
 
 // Каталог витрины по внутреннему seller.id (см. STACK.md#пайплайн-запроса).
 // null — витрины нет: продавец не найден, заблокирован (blocked = скрытие
-// админом) или подписка не в статусе active/grace — регистрация без оплаты
+// админом), подписка не в статусе active/grace — регистрация без оплаты
 // (Спринт 21) и «перестал платить после грейса» скрывают витрину тем же
-// механизмом, что и blocked (см. CONCEPT.md#оплата-подписки-продавцом):
-// покупателю в обоих случаях «магазин не найден», причина не раскрывается.
+// механизмом, что и blocked (см. CONCEPT.md#оплата-подписки-продавцом) —
+// либо fullName/phone пусты (обезличен и восстановлен админом без
+// дозаполнения профиля, Спринт 41, см. CONCEPT.md#персональные-данные-152-фз).
+// Во всех случаях покупателю «магазин не найден», причина не раскрывается.
 // Возвращаем только публичные поля — без ПДн продавца (152-ФЗ).
 export async function getShopCatalog(
   sellerId: number,
@@ -28,6 +30,8 @@ export async function getShopCatalog(
         eq(sellers.id, sellerId),
         eq(sellers.status, "active"),
         inArray(subscriptions.status, ["active", "grace"]),
+        ne(sellers.fullName, ""),
+        ne(sellers.phone, ""),
       ),
     );
   if (!seller) return null;

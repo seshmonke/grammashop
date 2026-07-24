@@ -197,12 +197,16 @@ export function SellerProfile() {
   const [shopName, setShopName] = useState("");
   const [shopDescription, setShopDescription] = useState("");
   const [paymentDetails, setPaymentDetails] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
 
   useEffect(() => {
     if (!profile) return;
     setShopName(profile.shopName);
     setShopDescription(profile.shopDescription ?? "");
     setPaymentDetails(profile.paymentDetails ?? "");
+    setFullName(profile.fullName);
+    setPhone(profile.phone);
   }, [profile]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -211,6 +215,8 @@ export function SellerProfile() {
       shopName: shopName.trim(),
       shopDescription: shopDescription.trim() === "" ? null : shopDescription.trim(),
       paymentDetails: paymentDetails.trim() === "" ? null : paymentDetails.trim(),
+      fullName: fullName.trim(),
+      phone: phone.trim(),
     });
   }
 
@@ -242,6 +248,30 @@ export function SellerProfile() {
                   id="shopName"
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
+                  className="w-full rounded-lg border border-tg-separator bg-tg-bg px-3 py-2 text-tg-text"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-tg-hint" htmlFor="fullName">
+                  ФИО
+                </label>
+                <input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full rounded-lg border border-tg-separator bg-tg-bg px-3 py-2 text-tg-text"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm text-tg-hint" htmlFor="phone">
+                  Телефон
+                </label>
+                <input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-lg border border-tg-separator bg-tg-bg px-3 py-2 text-tg-text"
                 />
               </div>

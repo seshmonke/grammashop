@@ -208,6 +208,8 @@ describe("/seller/profile", () => {
     expect(body.shopName).toBe("Профиль-магазин");
     expect(body.shopDescription).toBeNull();
     expect(body.paymentDetails).toBeNull();
+    expect(body.fullName).toBe("Профиль Владелец");
+    expect(body.phone).toBe("+79990002222");
     expect(body.subscription).toBeNull();
     await app.close();
   });
@@ -262,6 +264,75 @@ describe("/seller/profile", () => {
       .where(eq(sellers.id, sellerId));
     expect(row?.shopDescription).toBe("Продаём годноту");
 
+    await app.close();
+  });
+
+  it("PATCH: дозаполняет ФИО/телефон после обезличивания → витрина перестаёт быть скрытой", async () => {
+    const [seller] = await db
+      .insert(sellers)
+      .values({
+        telegramId: OTHER_TG,
+        telegramUsername: "profileowner",
+        fullName: "",
+        phone: "",
+        shopName: "Обезличенный магазин",
+        status: "active",
+      })
+      .returning({ id: sellers.id });
+    const sellerId = seller!.id;
+
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: OTHER_TG,
+      telegramUsername: "profileowner",
+      sellerId,
+    });
+    const res = await req(app, "PATCH", "/seller/profile", token, {
+      fullName: "Восстановленный Продавец",
+      phone: "+79995556677",
+    });
+    expect(res.statusCode).toBe(200);
+    const body = sellerProfileSchema.parse(res.json());
+    expect(body.fullName).toBe("Восстановленный Продавец");
+    expect(body.phone).toBe("+79995556677");
+
+    const [row] = await db
+      .select()
+      .from(sellers)
+      .where(eq(sellers.id, sellerId));
+    expect(row?.fullName).toBe("Восстановленный Продавец");
+    expect(row?.phone).toBe("+79995556677");
+
+    await app.close();
+  });
+
+  it("PATCH: пустое ФИО → 400", async () => {
+    const sellerId = await seedSeller();
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: OTHER_TG,
+      telegramUsername: "profileowner",
+      sellerId,
+    });
+    const res = await req(app, "PATCH", "/seller/profile", token, {
+      fullName: "",
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("PATCH: пустой телефон → 400", async () => {
+    const sellerId = await seedSeller();
+    const app = buildApp();
+    const token = await tokenFor(app, {
+      telegramId: OTHER_TG,
+      telegramUsername: "profileowner",
+      sellerId,
+    });
+    const res = await req(app, "PATCH", "/seller/profile", token, {
+      phone: "",
+    });
+    expect(res.statusCode).toBe(400);
     await app.close();
   });
 

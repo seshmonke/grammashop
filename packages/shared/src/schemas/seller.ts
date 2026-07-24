@@ -26,6 +26,13 @@ export const sellerProfileSchema = z.object({
   shopName: z.string(),
   shopDescription: z.string().nullable(),
   paymentDetails: z.string().nullable(),
+  // ФИО/телефон продавца — пустая строка после обезличивания (Спринт 37,
+  // anonymize-seller.ts), не null (колонки NOT NULL). Пустые значения здесь
+  // — сигнал для баннера «дозаполните профиль» (Спринт 41,
+  // CONCEPT.md#персональные-данные-152-фз): витрина скрыта, пока продавец их
+  // не заполнит через этот же PATCH.
+  fullName: z.string(),
+  phone: z.string(),
   // Статус подписки продавца (см. CONCEPT.md#оплата-подписки-продавцом) —
   // нужен баннеру в админке («витрина скрыта, подписка не активна» / «активна
   // до даты»), null — регистрация без оплаты, льгота ещё не выдана.
@@ -37,6 +44,12 @@ export const updateSellerProfileRequestSchema = z.object({
   shopName: z.string().trim().min(1).max(200).optional(),
   shopDescription: z.string().trim().max(2000).nullable().optional(),
   paymentDetails: z.string().trim().max(2000).nullable().optional(),
+  // Тот же уровень строгости, что на регистрации (registerSellerRequestSchema)
+  // — свободный текст без формата, решение 24.07.2026 (Спринт 41): в
+  // кодовой базе нет формат-валидации телефона нигде, заводить её здесь не в
+  // скоупе.
+  fullName: z.string().trim().min(1).max(200).optional(),
+  phone: z.string().trim().min(1).max(30).optional(),
 });
 export type UpdateSellerProfileRequest = z.infer<
   typeof updateSellerProfileRequestSchema

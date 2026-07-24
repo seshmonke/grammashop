@@ -51,11 +51,15 @@ function toProfile(row: {
   shopName: string;
   shopDescription: string | null;
   paymentDetails: string | null;
+  fullName: string;
+  phone: string;
 }, subscription: SellerProfile["subscription"]): SellerProfile {
   return {
     shopName: row.shopName,
     shopDescription: row.shopDescription,
     paymentDetails: row.paymentDetails,
+    fullName: row.fullName,
+    phone: row.phone,
     subscription,
   };
 }
@@ -82,6 +86,8 @@ export async function getSellerProfile(
       shopName: sellers.shopName,
       shopDescription: sellers.shopDescription,
       paymentDetails: sellers.paymentDetails,
+      fullName: sellers.fullName,
+      phone: sellers.phone,
     })
     .from(sellers)
     .where(eq(sellers.id, sellerId));
@@ -101,6 +107,8 @@ export async function updateSellerProfile(
       shopName: sellers.shopName,
       shopDescription: sellers.shopDescription,
       paymentDetails: sellers.paymentDetails,
+      fullName: sellers.fullName,
+      phone: sellers.phone,
     });
   if (!row) return null;
   return toProfile(row, await loadSubscription(sellerId));
