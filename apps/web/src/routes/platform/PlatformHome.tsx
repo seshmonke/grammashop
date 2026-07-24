@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 import type { SellerStatus, SubscriptionStatus, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { ScreenState } from "../../shop/ScreenState";
@@ -105,7 +106,7 @@ export function PlatformHome() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-tg-bg">
-      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <header className="tg-glass sticky top-0 z-10 border-b border-tg-separator px-4 pb-3 pt-[calc(0.75rem+var(--tg-header-safe-top))]">
         <h1 className="y2k-heading font-display text-lg text-tg-text">Продавцы</h1>
         {sellers && <p className="text-sm text-tg-hint">{sellers.length}</p>}
       </header>
@@ -130,21 +131,24 @@ export function PlatformHome() {
         {sellers?.map((seller) => (
           <div key={seller.id} className="rounded-2xl bg-tg-surface p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-1 items-baseline gap-2">
                 <h3 className="truncate font-medium text-tg-text">{seller.shopName}</h3>
-                <p className="mt-1 text-sm text-tg-hint">@{seller.telegramUsername}</p>
+                <span className="shrink-0 text-sm text-tg-hint">@{seller.telegramUsername}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
                 <a
                   href={shopLink(seller.id)}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-tg-link"
+                  aria-label="Открыть витрину"
+                  className="text-tg-link"
                 >
-                  Открыть витрину
+                  <ExternalLink className="size-4" />
                 </a>
+                <span className="rounded-full bg-tg-bg px-3 py-1 text-xs font-medium text-tg-text">
+                  {SELLER_STATUS_LABELS[seller.status]}
+                </span>
               </div>
-              <span className="shrink-0 rounded-full bg-tg-bg px-3 py-1 text-xs font-medium text-tg-text">
-                {SELLER_STATUS_LABELS[seller.status]}
-              </span>
             </div>
 
             <div className="mt-3 space-y-1 border-t border-tg-separator pt-3 text-sm text-tg-text">
@@ -165,7 +169,7 @@ export function PlatformHome() {
               )}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-tg-separator pt-3">
+            <div className="mt-3 border-t border-tg-separator pt-3">
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -190,36 +194,41 @@ export function PlatformHome() {
                   Выдать доступ
                 </Button>
               </div>
-              {seller.status === "active" ? (
-                <div className="flex gap-2">
+              {/* Отдельный ряд, с отступом от выдачи доступа выше — не
+                  соревнуется визуально с конструктивным действием (решение
+                  24.07.2026, см. DESIGN_SYSTEM.md#реализация). */}
+              <div className="mt-3 flex items-center gap-4">
+                {seller.status === "active" ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={updateStatus.isPending}
+                      onClick={() => handleStartAction(seller.id, "blocked")}
+                    >
+                      Заблокировать
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-tg-destructive"
+                      disabled={updateStatus.isPending}
+                      onClick={() => handleStartAction(seller.id, "deleted")}
+                    >
+                      Удалить
+                    </Button>
+                  </>
+                ) : (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     disabled={updateStatus.isPending}
-                    onClick={() => handleStartAction(seller.id, "blocked")}
+                    onClick={() => handleRestore(seller.id)}
                   >
-                    Заблокировать
+                    {seller.status === "blocked" ? "Разблокировать" : "Восстановить"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-tg-destructive"
-                    disabled={updateStatus.isPending}
-                    onClick={() => handleStartAction(seller.id, "deleted")}
-                  >
-                    Удалить
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={updateStatus.isPending}
-                  onClick={() => handleRestore(seller.id)}
-                >
-                  {seller.status === "blocked" ? "Разблокировать" : "Восстановить"}
-                </Button>
-              )}
+                )}
+              </div>
             </div>
 
             {pending?.id === seller.id && (
