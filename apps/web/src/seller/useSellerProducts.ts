@@ -2,12 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   productImagesResponseSchema,
   productImportResponseSchema,
+  publishAllResponseSchema,
   sellerProductListResponseSchema,
   sellerProductSchema,
   type CreateProductRequest,
   type ProductImportResponse,
+  type ProductStatus,
   type ProductVariantInput,
   type ProductVariantUpdate,
+  type PublishAllResponse,
   type SellerProduct,
   type UpdateProductRequest,
 } from "@grammashop/shared";
@@ -53,6 +56,40 @@ export function useUpdateProduct() {
         args.input,
       );
       return sellerProductSchema.parse(data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+  });
+}
+
+// Публикация/снятие карточки (active↔hidden, см.
+// CONCEPT.md#жизненный-цикл-сущностей). Отдельный эндпоинт от общего
+// обновления карточки — у него своя проверка (≥1 варианта) на бэке.
+export function useSetProductStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: number; status: ProductStatus }) => {
+      const { data } = await apiClient.patch(
+        `/seller/products/${args.id}/status`,
+        { status: args.status },
+      );
+      return sellerProductSchema.parse(data);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });
+    },
+  });
+}
+
+// Массовая публикация черновиков — закрывает онбординг после пакетного
+// импорта (см. CONCEPT.md#жизненный-цикл-сущностей).
+export function usePublishAllDrafts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<PublishAllResponse> => {
+      const { data } = await apiClient.post("/seller/products/publish-all");
+      return publishAllResponseSchema.parse(data);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PRODUCTS_QUERY_KEY });

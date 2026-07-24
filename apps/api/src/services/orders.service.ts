@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type {
   BuyerOrder,
+  CheckoutPrefill,
   CreateOrderRequest,
   CreateOrderResponse,
   OrderStatus,
@@ -284,6 +285,37 @@ export async function listBuyerOrders(
   return Promise.all(
     own.map(async (order) => ({ ...order, items: await loadOrderItems(order.id) })),
   );
+}
+
+// Автоподстановка чекаута (GET /shop/:sellerId/orders/prefill, см.
+// CONCEPT.md#жизненный-цикл-сущностей, «Покупатель»). Возвращает снапшот
+// ПДн из последнего заказа этого покупателя в этом же магазине — его
+// собственные данные под тем же buyer_telegram_id, ничего нового не
+// хранится и не логируется. null — заказов ещё не было. consent не
+// подставляется (даётся заново на каждый заказ, поэтому его нет в снапшоте
+// prefill-ответа).
+export async function getCheckoutPrefill(
+  sellerId: number,
+  buyerTelegramId: number,
+): Promise<CheckoutPrefill | null> {
+  const [last] = await db
+    .select({
+      buyerFullName: orders.buyerFullName,
+      buyerPhone: orders.buyerPhone,
+      buyerAddress: orders.buyerAddress,
+      buyerComment: orders.buyerComment,
+    })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.sellerId, sellerId),
+        eq(orders.buyerTelegramId, buyerTelegramId),
+      ),
+    )
+    .orderBy(desc(orders.createdAt), desc(orders.id))
+    .limit(1);
+
+  return last ?? null;
 }
 
 // null — заказ не найден или принадлежит другому продавцу (см.

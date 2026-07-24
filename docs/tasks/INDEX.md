@@ -101,3 +101,4 @@
 39. [Кап ширины floating toolbar + фикс высоты карточки товара](39-toolbar-width-cap-and-card-height-fix.md) — закрыт
 40. [Форма кнопок + права восстановления + заказы по магазину + починка/просмотр витрины в админке платформы](40-admin-button-restore-rights-and-review-debt.md) — закрыт
 41. [Скрывать витрину продавца после обезличивания до дозаполнения профиля](41-hide-storefront-until-profile-complete.md) — закрыт
+42. [Статус-жизненный цикл карточки + автоподстановка чекаута](42-card-status-lifecycle-and-checkout-prefill.md) — закрыт

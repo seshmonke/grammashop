@@ -5,6 +5,7 @@ import { useCart } from "../../cart/cart-context";
 import { cartTotalKopecks } from "../../cart/cart-reducer";
 import { buildCreateOrderRequest, type CheckoutFormValues } from "../../checkout/build-order-request";
 import { checkoutErrorMessage } from "../../checkout/checkout-error-message";
+import { useCheckoutPrefill } from "../../checkout/useCheckoutPrefill";
 import { useCreateOrder } from "../../checkout/useCreateOrder";
 import { validateCheckoutForm, type CheckoutFormErrors } from "../../checkout/validate-checkout-form";
 import { ScreenState } from "../../shop/ScreenState";
@@ -90,6 +91,24 @@ export function CheckoutPage() {
   // если "Оформить заказ" нажали повторно после сетевой ошибки, сервер
   // должен увидеть тот же ключ и не задвоить заказ.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  // Автоподстановка из последнего заказа в этом магазине (Спринт 42, см.
+  // CONCEPT.md#жизненный-цикл-сущностей). Подставляем один раз, когда
+  // данные подъехали, и не перетираем ввод пользователя (по образцу
+  // ProductForm). consent не подставляется — даётся заново на каждый заказ.
+  const prefill = useCheckoutPrefill(state.sellerId ?? null);
+  const [prefilled, setPrefilled] = useState(false);
+  if (!prefilled && prefill.data) {
+    const data = prefill.data;
+    setForm((f) => ({
+      ...f,
+      buyerFullName: data.buyerFullName,
+      buyerPhone: data.buyerPhone,
+      buyerAddress: data.buyerAddress,
+      buyerComment: data.buyerComment ?? "",
+    }));
+    setPrefilled(true);
+  }
 
   // Живая валидация — та же Zod-схема на каждое изменение формы (дешёвая
   // синхронная проверка, дебаунс не нужен). errors показываются только для

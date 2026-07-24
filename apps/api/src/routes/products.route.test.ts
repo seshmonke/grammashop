@@ -109,6 +109,10 @@ describe("/seller/products", () => {
       expect(res.statusCode).toBe(201);
       const body = res.json();
       expect(body.name).toBe("Худи");
+      // Новая карточка рождается черновиком (Спринт 42, см.
+      // CONCEPT.md#жизненный-цикл-сущностей) — не протекает на витрину до
+      // явной публикации.
+      expect(body.status).toBe("hidden");
       expect(body.variants).toHaveLength(2);
       expect(body.variants[0].stock).toBe(5);
       expect(body.variants[1].oldPriceKopecks).toBe(350000);
@@ -222,6 +226,184 @@ describe("/seller/products", () => {
         variants: oneVariant,
       });
       expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
+    // Тест-замок (Спринт 42): лимит считает и active, и hidden — иначе он
+    // обходится массой скрытых черновиков (см.
+    // CONCEPT.md#жизненный-цикл-сущностей). Будущий фильтр по статусу в
+    // подсчёте не должен сломать это правило.
+    it("лимит считает active + hidden вместе: 15 active + 15 hidden, 31-я → 400", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const token = await tokenFor(app, { sellerId });
+
+      await db.insert(products).values([
+        ...Array.from({ length: 15 }, (_, i) => ({
+          sellerId,
+          name: `Active ${i}`,
+          status: "active" as const,
+        })),
+        ...Array.from({ length: 15 }, (_, i) => ({
+          sellerId,
+          name: `Hidden ${i}`,
+          status: "hidden" as const,
+        })),
+      ]);
+
+      const res = await req(app, "POST", "/seller/products", token, {
+        name: "Тридцать первый",
+        variants: oneVariant,
+      });
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+  });
+
+  // Публикация/снятие карточки (Спринт 42, см.
+  // CONCEPT.md#жизненный-цикл-сущностей).
+  describe("PATCH /seller/products/:id/status", () => {
+    it("публикация черновика (hidden → active) → 200, статус active", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const [product] = await db
+        .insert(products)
+        .values({ sellerId, name: "Черновик", status: "hidden" })
+        .returning({ id: products.id });
+      await db
+        .insert(productVariants)
+        .values({ productId: product!.id, name: "V", priceKopecks: 1000 });
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/seller/products/${product!.id}/status`,
+        token,
+        { status: "active" },
+      );
+      expect(res.statusCode).toBe(200);
+      expect(res.json().status).toBe("active");
+      await app.close();
+    });
+
+    it("снятие с витрины (active → hidden) → 200, статус hidden", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const [product] = await db
+        .insert(products)
+        .values({ sellerId, name: "На витрине", status: "active" })
+        .returning({ id: products.id });
+      await db
+        .insert(productVariants)
+        .values({ productId: product!.id, name: "V", priceKopecks: 1000 });
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/seller/products/${product!.id}/status`,
+        token,
+        { status: "hidden" },
+      );
+      expect(res.statusCode).toBe(200);
+      expect(res.json().status).toBe("hidden");
+      await app.close();
+    });
+
+    it("публикация карточки без вариантов → 400", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const [product] = await db
+        .insert(products)
+        .values({ sellerId, name: "Пустой черновик", status: "hidden" })
+        .returning({ id: products.id });
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/seller/products/${product!.id}/status`,
+        token,
+        { status: "active" },
+      );
+      expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
+    it("чужая карточка → 404", async () => {
+      const app = buildApp();
+      const ownerId = await seedSeller(OWNER_TG, "owner");
+      const otherId = await seedSeller(OTHER_TG, "other");
+      const [product] = await db
+        .insert(products)
+        .values({ sellerId: otherId, name: "Чужой", status: "active" })
+        .returning({ id: products.id });
+      const token = await tokenFor(app, { sellerId: ownerId });
+
+      const res = await req(
+        app,
+        "PATCH",
+        `/seller/products/${product!.id}/status`,
+        token,
+        { status: "hidden" },
+      );
+      expect(res.statusCode).toBe(404);
+      await app.close();
+    });
+  });
+
+  // Массовая публикация черновиков (Спринт 42) — закрывает онбординг после
+  // импорта (см. CONCEPT.md#жизненный-цикл-сущностей).
+  describe("POST /seller/products/publish-all", () => {
+    it("публикует только hidden-карточки с ≥1 вариантом", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+
+      // Два черновика с вариантами, один черновик без вариантов, одна уже
+      // active — ожидаем publishedCount === 2, пустой черновик остаётся hidden.
+      const [draftA] = await db
+        .insert(products)
+        .values({ sellerId, name: "Черновик A", status: "hidden" })
+        .returning({ id: products.id });
+      const [draftB] = await db
+        .insert(products)
+        .values({ sellerId, name: "Черновик B", status: "hidden" })
+        .returning({ id: products.id });
+      const [emptyDraft] = await db
+        .insert(products)
+        .values({ sellerId, name: "Пустой черновик", status: "hidden" })
+        .returning({ id: products.id });
+      await db
+        .insert(products)
+        .values({ sellerId, name: "Уже на витрине", status: "active" });
+      await db.insert(productVariants).values([
+        { productId: draftA!.id, name: "V", priceKopecks: 1000 },
+        { productId: draftB!.id, name: "V", priceKopecks: 1000 },
+      ]);
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(app, "POST", "/seller/products/publish-all", token);
+      expect(res.statusCode).toBe(200);
+      expect(res.json().publishedCount).toBe(2);
+
+      // Пустой черновик не опубликован (нарушил бы инвариант active ⇒ вариант).
+      const [empty] = await db
+        .select({ status: products.status })
+        .from(products)
+        .where(eq(products.id, emptyDraft!.id));
+      expect(empty!.status).toBe("hidden");
+      await app.close();
+    });
+
+    it("нет черновиков → publishedCount 0", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(app, "POST", "/seller/products/publish-all", token);
+      expect(res.statusCode).toBe(200);
+      expect(res.json().publishedCount).toBe(0);
       await app.close();
     });
   });
@@ -344,10 +526,13 @@ describe("/seller/products", () => {
   });
 
   describe("варианты", () => {
+    // Сидим карточку сразу active («на витрине») — эти тесты про инвариант
+    // active-карточки (last-variant guard и т.п.); дефолт в БД теперь hidden
+    // (Спринт 42), поэтому статус задаём явно.
     async function seedProductWithVariant(sellerId: number) {
       const [product] = await db
         .insert(products)
-        .values({ sellerId, name: "Товар" })
+        .values({ sellerId, name: "Товар", status: "active" })
         .returning({ id: products.id });
       const [variant] = await db
         .insert(productVariants)
@@ -500,7 +685,7 @@ describe("/seller/products", () => {
       await app.close();
     });
 
-    it("DELETE последнего варианта карточки → 400", async () => {
+    it("DELETE последнего варианта active-карточки → 400", async () => {
       const app = buildApp();
       const sellerId = await seedSeller(OWNER_TG, "owner");
       const { productId, variantId } = await seedProductWithVariant(sellerId);
@@ -513,6 +698,32 @@ describe("/seller/products", () => {
         token,
       );
       expect(res.statusCode).toBe(400);
+      await app.close();
+    });
+
+    // Инвариант «active ⇒ есть вариант» держится только на active; у
+    // черновика (hidden) удаление последнего варианта разрешено — продавец
+    // доводит карточку до ума (см. CONCEPT.md#жизненный-цикл-сущностей).
+    it("DELETE последнего варианта hidden-карточки → 204", async () => {
+      const app = buildApp();
+      const sellerId = await seedSeller(OWNER_TG, "owner");
+      const [product] = await db
+        .insert(products)
+        .values({ sellerId, name: "Черновик", status: "hidden" })
+        .returning({ id: products.id });
+      const [variant] = await db
+        .insert(productVariants)
+        .values({ productId: product!.id, name: "Единственный", priceKopecks: 1000 })
+        .returning({ id: productVariants.id });
+      const token = await tokenFor(app, { sellerId });
+
+      const res = await req(
+        app,
+        "DELETE",
+        `/seller/products/${product!.id}/variants/${variant!.id}`,
+        token,
+      );
+      expect(res.statusCode).toBe(204);
       await app.close();
     });
 

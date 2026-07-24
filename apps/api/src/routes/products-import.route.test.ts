@@ -130,10 +130,14 @@ describe("POST /seller/products/import", () => {
     expect(body).toEqual({ createdCount: 2, errors: [] });
 
     const rows = await db
-      .select({ id: products.id, name: products.name })
+      .select({ id: products.id, name: products.name, status: products.status })
       .from(products)
       .where(eq(products.sellerId, ownerId));
     expect(rows.map((r) => r.name).sort()).toEqual(["Футболка", "Худи"]);
+    // Импортированные карточки рождаются черновиками (Спринт 42, см.
+    // CONCEPT.md#жизненный-цикл-сущностей): импорт даёт текст и цены, но не
+    // фото — продавец дозагружает фото и публикует («Опубликовать все»).
+    expect(rows.every((r) => r.status === "hidden")).toBe(true);
 
     const tshirt = rows.find((r) => r.name === "Футболка")!;
     const variants = await db

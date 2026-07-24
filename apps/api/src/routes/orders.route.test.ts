@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
   buyerOrderListResponseSchema,
+  checkoutPrefillResponseSchema,
   createOrderResponseSchema,
   sellerOrderListResponseSchema,
 } from "@grammashop/shared";
@@ -550,6 +551,125 @@ describe("GET /shop/:sellerId/orders/mine", () => {
     expect(body.orders[0]!.telegramUsername).toBe("shop_a");
     expect(body.orders[0]!.sellerId).toBe(sellerAId);
     expect(body.orders[0]!.items).toHaveLength(1);
+    await app.close();
+  });
+});
+
+// GET /shop/:sellerId/orders/prefill — автоподстановка чекаута из
+// последнего заказа покупателя в этом же магазине (Спринт 42, см.
+// CONCEPT.md#жизненный-цикл-сущностей). Читается собственный снапшот ПДн
+// покупателя под тем же buyer_telegram_id, в пределах текущего магазина.
+
+const PREFILL_BUYER_TG = 700700001;
+const PREFILL_OTHER_BUYER_TG = 700700002;
+const PREFILL_SELLER_A_TG = 700700003;
+const PREFILL_SELLER_B_TG = 700700004;
+const ALL_PREFILL_SELLER_TG = [PREFILL_SELLER_A_TG, PREFILL_SELLER_B_TG];
+
+async function insertPrefillOrder(
+  sellerId: number,
+  buyerTelegramId: number,
+  snapshot: { fullName: string; phone: string; address: string; comment: string | null },
+): Promise<number> {
+  const [order] = await db
+    .insert(orders)
+    .values({
+      sellerId,
+      buyerTelegramId,
+      status: "new",
+      buyerFullName: snapshot.fullName,
+      buyerPhone: snapshot.phone,
+      buyerAddress: snapshot.address,
+      buyerComment: snapshot.comment,
+      consentAt: new Date(),
+      totalKopecks: 100000,
+    })
+    .returning({ id: orders.id });
+  return order!.id;
+}
+
+describe("GET /shop/:sellerId/orders/prefill", () => {
+  beforeEach(async () => {
+    const stale = await db
+      .select({ id: sellers.id })
+      .from(sellers)
+      .where(inArray(sellers.telegramId, ALL_PREFILL_SELLER_TG));
+    if (stale.length) {
+      await db.delete(orders).where(
+        inArray(
+          orders.sellerId,
+          stale.map((s) => s.id),
+        ),
+      );
+    }
+    await db.delete(sellers).where(inArray(sellers.telegramId, ALL_PREFILL_SELLER_TG));
+  });
+
+  it("без JWT → 401", async () => {
+    const app = buildApp();
+    const res = await methodReq(app, "GET", "/shop/1/orders/prefill");
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("нет заказов покупателя в этом магазине → prefill null", async () => {
+    const app = buildApp();
+    const sellerAId = await seedSellerAdmin(PREFILL_SELLER_A_TG, "pf_shop_a");
+    const token = await mineTokenFor(app, PREFILL_BUYER_TG);
+    const res = await methodReq(app, "GET", `/shop/${sellerAId}/orders/prefill`, token);
+    expect(res.statusCode).toBe(200);
+    const body = checkoutPrefillResponseSchema.parse(res.json());
+    expect(body.prefill).toBeNull();
+    await app.close();
+  });
+
+  it("отдаёт снапшот последнего заказа в этом магазине; чужие и заказы в другом магазине не влияют", async () => {
+    const app = buildApp();
+    const sellerAId = await seedSellerAdmin(PREFILL_SELLER_A_TG, "pf_shop_a");
+    const sellerBId = await seedSellerAdmin(PREFILL_SELLER_B_TG, "pf_shop_b");
+
+    // Старый заказ покупателя в магазине A.
+    await insertPrefillOrder(sellerAId, PREFILL_BUYER_TG, {
+      fullName: "Старое Имя",
+      phone: "+79990000001",
+      address: "Старый адрес",
+      comment: "старый",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    // Свежий заказ того же покупателя в магазине A — именно он должен
+    // подставиться.
+    await insertPrefillOrder(sellerAId, PREFILL_BUYER_TG, {
+      fullName: "Новое Имя",
+      phone: "+79991112233",
+      address: "Москва, Новый адрес, 7",
+      comment: null,
+    });
+    // Тот же покупатель в другом магазине — не влияет (скоуп — этот магазин).
+    await insertPrefillOrder(sellerBId, PREFILL_BUYER_TG, {
+      fullName: "Чужой Магазин",
+      phone: "+79995556677",
+      address: "Другой магазин",
+      comment: "не сюда",
+    });
+    // Другой покупатель в этом же магазине — не влияет.
+    await insertPrefillOrder(sellerAId, PREFILL_OTHER_BUYER_TG, {
+      fullName: "Другой Покупатель",
+      phone: "+79994443322",
+      address: "Чужие данные",
+      comment: null,
+    });
+
+    const token = await mineTokenFor(app, PREFILL_BUYER_TG);
+    const res = await methodReq(app, "GET", `/shop/${sellerAId}/orders/prefill`, token);
+
+    expect(res.statusCode).toBe(200);
+    const body = checkoutPrefillResponseSchema.parse(res.json());
+    expect(body.prefill).toEqual({
+      buyerFullName: "Новое Имя",
+      buyerPhone: "+79991112233",
+      buyerAddress: "Москва, Новый адрес, 7",
+      buyerComment: null,
+    });
     await app.close();
   });
 });

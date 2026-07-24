@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { productStatusSchema } from "../domain/enums.js";
 
 // Контракт продавцовской админки товаров (см.
 // STACK.md#роутинг, CONCEPT.md#каталог-и-заказы). Лимиты (30 карточек,
@@ -72,10 +73,34 @@ export const sellerProductSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string().nullable(),
+  // Статус витрины (см. CONCEPT.md#жизненный-цикл-сущностей): active — на
+  // витрине, hidden — черновик/снята. Read-side витрины отдаёт только
+  // active, но продавцу нужен статус, чтобы показать бейдж и действие
+  // «Опубликовать / Снять».
+  status: productStatusSchema,
   variants: z.array(sellerProductVariantSchema),
   images: z.array(productImageSchema),
 });
 export type SellerProduct = z.infer<typeof sellerProductSchema>;
+
+// Смена статуса карточки продавцом (PATCH /seller/products/:id/status).
+// Публикация (active) требует ≥1 варианта — проверяется в сервисе, не
+// здесь (эта схема только про форму запроса).
+export const updateProductStatusRequestSchema = z.object({
+  status: productStatusSchema,
+});
+export type UpdateProductStatusRequest = z.infer<
+  typeof updateProductStatusRequestSchema
+>;
+
+// Массовая публикация черновиков (POST /seller/products/publish-all) —
+// переводит все hidden-карточки продавца с ≥1 вариантом в active,
+// закрывая онбординг после пакетного импорта (см.
+// CONCEPT.md#жизненный-цикл-сущностей, «Пакетный импорт рождает черновики»).
+export const publishAllResponseSchema = z.object({
+  publishedCount: z.number().int(),
+});
+export type PublishAllResponse = z.infer<typeof publishAllResponseSchema>;
 
 export const productImagesResponseSchema = z.object({
   images: z.array(productImageSchema),

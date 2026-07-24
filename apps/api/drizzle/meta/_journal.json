@@ -43,6 +43,13 @@
       "when": 1784827902661,
       "tag": "0005_dusty_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784892157915,
+      "tag": "0006_sleepy_shiver_man",
+      "breakpoints": true
     }
   ]
 }

@@ -8,9 +8,12 @@ import { useSellerProfile } from "../../seller/useSellerProfile";
 import {
   useDeleteProduct,
   useImportProducts,
+  usePublishAllDrafts,
   useSellerProducts,
+  useSetProductStatus,
 } from "../../seller/useSellerProducts";
-import type { ProductImportResponse } from "@grammashop/shared";
+import type { ProductImportResponse, SellerProduct } from "@grammashop/shared";
+import { ProductStatusPill } from "../../seller/ProductStatusPill";
 
 // Список товаров продавца (см. STACK.md#роутинг: «товары (CRUD)»). Лимит
 // (Free 30 / Premium 3000, см. CONCEPT.md#тарифы) проверяется на бэке —
@@ -28,15 +31,49 @@ export function SellerHome() {
       : FREE_PRODUCT_LIMIT;
   const deleteProduct = useDeleteProduct();
   const importProducts = useImportProducts();
+  const setStatus = useSetProductStatus();
+  const publishAll = usePublishAllDrafts();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<ProductImportResponse | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [publishAllMessage, setPublishAllMessage] = useState<string | null>(null);
+
+  const draftCount = products?.filter((p) => p.status === "hidden").length ?? 0;
 
   function handleDelete(id: number, name: string) {
     if (!confirm(`Удалить карточку «${name}»? Это действие необратимо.`)) {
       return;
     }
     deleteProduct.mutate(id);
+  }
+
+  function handleToggleStatus(product: SellerProduct) {
+    const next = product.status === "active" ? "hidden" : "active";
+    setStatus.mutate(
+      { id: product.id, status: next },
+      {
+        onError: () =>
+          alert(
+            next === "active"
+              ? "Не удалось опубликовать карточку — попробуйте ещё раз"
+              : "Не удалось снять карточку с витрины — попробуйте ещё раз",
+          ),
+      },
+    );
+  }
+
+  async function handlePublishAll() {
+    setPublishAllMessage(null);
+    try {
+      const { publishedCount } = await publishAll.mutateAsync();
+      setPublishAllMessage(
+        publishedCount > 0
+          ? `Опубликовано карточек: ${publishedCount}`
+          : "Нет черновиков, готовых к публикации",
+      );
+    } catch {
+      setPublishAllMessage("Не удалось опубликовать черновики — попробуйте ещё раз");
+    }
   }
 
   async function handleImportSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -66,12 +103,28 @@ export function SellerHome() {
           )}
         </div>
         {/* Разделы (Заказы/Настройки/Платформа) теперь в AdminToolbar внизу
-            экрана — здесь остаётся только основное действие экрана. */}
-        <div className="mt-2">
+            экрана — здесь остаётся основное действие + массовая публикация
+            черновиков (закрывает онбординг после импорта, см.
+            CONCEPT.md#жизненный-цикл-сущностей). */}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <Button asChild>
             <Link to="/seller/products/new">Добавить</Link>
           </Button>
+          {draftCount > 0 && (
+            <Button
+              variant="outline"
+              disabled={publishAll.isPending}
+              onClick={handlePublishAll}
+            >
+              {publishAll.isPending
+                ? "Публикуем…"
+                : `Опубликовать все черновики (${draftCount})`}
+            </Button>
+          )}
         </div>
+        {publishAllMessage && (
+          <p className="mt-2 text-sm text-tg-hint">{publishAllMessage}</p>
+        )}
       </header>
 
       <main className="flex-1 space-y-3 p-4">
@@ -150,8 +203,13 @@ export function SellerHome() {
         )}
         {products?.map((product) => {
           const prices = product.variants.map((v) => v.priceKopecks);
-          const min = Math.min(...prices);
-          const max = Math.max(...prices);
+          // hidden-карточка может остаться без вариантов (удаление
+          // последнего варианта на hidden разрешено) — тогда Math.min дал бы
+          // Infinity, поэтому цену показываем только при наличии вариантов.
+          const hasVariants = prices.length > 0;
+          const min = hasVariants ? Math.min(...prices) : 0;
+          const max = hasVariants ? Math.max(...prices) : 0;
+          const noPhoto = product.images.length === 0;
           return (
             <div
               key={product.id}
@@ -163,26 +221,54 @@ export function SellerHome() {
                     {product.name}
                   </h3>
                   <p className="mt-1 text-sm text-tg-hint">
-                    {product.variants.length}{" "}
-                    {product.variants.length === 1 ? "вариант" : "вариантов"}
-                    {" · "}
-                    {min === max ? formatPrice(min) : `от ${formatPrice(min)}`}
+                    {hasVariants ? (
+                      <>
+                        {product.variants.length}{" "}
+                        {product.variants.length === 1 ? "вариант" : "вариантов"}
+                        {" · "}
+                        {min === max ? formatPrice(min) : `от ${formatPrice(min)}`}
+                      </>
+                    ) : (
+                      "нет вариантов"
+                    )}
+                    {noPhoto && " · без фото"}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
-                  <Button asChild variant="outline" size="sm">
-                    <Link to={`/seller/products/${product.id}/edit`}>
-                      Изменить
-                    </Link>
-                  </Button>
+                <ProductStatusPill status={product.status} />
+              </div>
+
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button asChild variant="outline" size="sm">
+                  <Link to={`/seller/products/${product.id}/edit`}>
+                    Изменить
+                  </Link>
+                </Button>
+                {product.status === "active" ? (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => handleDelete(product.id, product.name)}
+                    disabled={setStatus.isPending}
+                    onClick={() => handleToggleStatus(product)}
                   >
-                    Удалить
+                    Снять с витрины
                   </Button>
-                </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={setStatus.isPending || !hasVariants}
+                    onClick={() => handleToggleStatus(product)}
+                  >
+                    Опубликовать
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(product.id, product.name)}
+                >
+                  Удалить
+                </Button>
               </div>
             </div>
           );

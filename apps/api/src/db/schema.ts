@@ -143,7 +143,11 @@ export const products = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     sortPosition: integer("sort_position").notNull().default(0),
-    status: productStatusEnum("status").notNull().default("active"),
+    // Новая карточка рождается черновиком (см.
+    // CONCEPT.md#жизненный-цикл-сущностей): продавец публикует её явным
+    // действием. Прежний дефолт был active (столбец не выставлялся
+    // write-side'ом), сменён в Спринте 42.
+    status: productStatusEnum("status").notNull().default("hidden"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

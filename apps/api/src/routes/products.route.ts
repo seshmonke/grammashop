@@ -6,9 +6,11 @@ import {
   productImportResponseSchema,
   productVariantInputSchema,
   productVariantUpdateSchema,
+  publishAllResponseSchema,
   sellerProductListResponseSchema,
   sellerProductSchema,
   updateProductRequestSchema,
+  updateProductStatusRequestSchema,
 } from "@grammashop/shared";
 import { requireSellerId } from "../auth/access.js";
 import {
@@ -17,6 +19,8 @@ import {
   deleteProduct,
   deleteVariant,
   listSellerProducts,
+  publishAllDrafts,
+  setProductStatus,
   updateProduct,
   updateVariant,
 } from "../services/products.service.js";
@@ -70,6 +74,18 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
     return reply.code(201).send(sellerProductSchema.parse(result.product));
   });
 
+  // Массовая публикация черновиков — статичный путь, регистрируется до
+  // параметрического /seller/products/:id (Fastify всё равно матчит
+  // статику раньше, но держим рядом с созданием по смыслу). См.
+  // CONCEPT.md#жизненный-цикл-сущностей.
+  fastify.post("/seller/products/publish-all", async (request, reply) => {
+    const sellerId = await requireSellerId(request, reply);
+    if (sellerId === null) return;
+
+    const publishedCount = await publishAllDrafts(sellerId);
+    return publishAllResponseSchema.parse({ publishedCount });
+  });
+
   fastify.patch("/seller/products/:id", async (request, reply) => {
     const sellerId = await requireSellerId(request, reply);
     if (sellerId === null) return;
@@ -91,6 +107,38 @@ export async function productsRoutes(fastify: FastifyInstance): Promise<void> {
     }
 
     return sellerProductSchema.parse(updated);
+  });
+
+  // Публикация/снятие карточки (active↔hidden). Отдельный эндпоинт от
+  // общего PATCH карточки: у публикации своя проверка (≥1 варианта) и
+  // отдельный смысл для UI («Опубликовать / Снять с витрины»). См.
+  // CONCEPT.md#жизненный-цикл-сущностей.
+  fastify.patch("/seller/products/:id/status", async (request, reply) => {
+    const sellerId = await requireSellerId(request, reply);
+    if (sellerId === null) return;
+
+    const { id: raw } = request.params as { id: string };
+    const productId = parseIdParam(raw);
+    if (productId === null) {
+      return reply.code(400).send({ error: "id должен быть числом" });
+    }
+
+    const parsed = updateProductStatusRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "некорректный статус" });
+    }
+
+    const result = await setProductStatus(sellerId, productId, parsed.data.status);
+    if (!result.ok) {
+      if (result.reason === "no_variants") {
+        return reply
+          .code(400)
+          .send({ error: "нельзя опубликовать карточку без вариантов" });
+      }
+      return reply.code(404).send({ error: "карточка не найдена" });
+    }
+
+    return sellerProductSchema.parse(result.product);
   });
 
   fastify.delete("/seller/products/:id", async (request, reply) => {

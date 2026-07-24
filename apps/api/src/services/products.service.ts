@@ -1,6 +1,7 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, exists, sql } from "drizzle-orm";
 import type {
   CreateProductRequest,
+  ProductStatus,
   ProductVariantInput,
   ProductVariantUpdate,
   SellerProduct,
@@ -38,7 +39,12 @@ async function productLimitFor(sellerId: number): Promise<number> {
 }
 
 function toSellerProduct(
-  product: { id: number; name: string; description: string | null },
+  product: {
+    id: number;
+    name: string;
+    description: string | null;
+    status: ProductStatus;
+  },
   variants: Array<{
     id: number;
     name: string;
@@ -52,6 +58,7 @@ function toSellerProduct(
     id: product.id,
     name: product.name,
     description: product.description,
+    status: product.status,
     variants,
     images,
   };
@@ -75,7 +82,12 @@ export async function listSellerProducts(
   sellerId: number,
 ): Promise<SellerProduct[]> {
   const own = await db
-    .select({ id: products.id, name: products.name, description: products.description })
+    .select({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      status: products.status,
+    })
     .from(products)
     .where(eq(products.sellerId, sellerId))
     .orderBy(asc(products.sortPosition), asc(products.id));
@@ -94,7 +106,12 @@ export async function listSellerProducts(
 // не давал утечки существования чужих карточек по таймингу/поведению.
 export async function findOwnedProduct(sellerId: number, productId: number) {
   const [product] = await db
-    .select({ id: products.id, name: products.name, description: products.description })
+    .select({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      status: products.status,
+    })
     .from(products)
     .where(and(eq(products.id, productId), eq(products.sellerId, sellerId)));
   return product ?? null;
@@ -113,6 +130,10 @@ export async function createProduct(
     return { ok: false, reason: "product_limit" };
   }
 
+  // status не задаётся явно — DB-default hidden (черновик, см.
+  // db/schema.ts и CONCEPT.md#жизненный-цикл-сущностей). Это же покрывает
+  // пакетный импорт: он создаёт карточки через этот же путь, значит
+  // импортированные тоже рождаются черновиками (Спринт 42).
   const [product] = await db
     .insert(products)
     .values({
@@ -120,7 +141,12 @@ export async function createProduct(
       name: input.name,
       description: input.description ?? null,
     })
-    .returning({ id: products.id, name: products.name, description: products.description });
+    .returning({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      status: products.status,
+    });
 
   const insertedVariants = await db
     .insert(productVariants)
@@ -167,13 +193,93 @@ export async function updateProduct(
         : {}),
     })
     .where(eq(products.id, productId))
-    .returning({ id: products.id, name: products.name, description: products.description });
+    .returning({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      status: products.status,
+    });
 
   return toSellerProduct(
     updated!,
     await loadVariants(productId),
     await loadImagesForProduct(productId),
   );
+}
+
+// Публикация/снятие карточки (PATCH /seller/products/:id/status, см.
+// CONCEPT.md#жизненный-цикл-сущностей). Публикация (active) требует ≥1
+// варианта — инвариант «active ⇒ есть вариант с ценой»; снятие в hidden
+// без ограничений. no_variants — попытка опубликовать карточку без
+// вариантов (hidden-карточка могла лишиться последнего варианта, см.
+// deleteVariant).
+export async function setProductStatus(
+  sellerId: number,
+  productId: number,
+  status: ProductStatus,
+): Promise<
+  | { ok: true; product: SellerProduct }
+  | { ok: false; reason: "not_found" | "no_variants" }
+> {
+  const owned = await findOwnedProduct(sellerId, productId);
+  if (!owned) return { ok: false, reason: "not_found" };
+
+  if (status === "active") {
+    const [variantCountRow] = await db
+      .select({ value: count() })
+      .from(productVariants)
+      .where(eq(productVariants.productId, productId));
+    if ((variantCountRow?.value ?? 0) < 1) {
+      return { ok: false, reason: "no_variants" };
+    }
+  }
+
+  const [updated] = await db
+    .update(products)
+    .set({ status })
+    .where(eq(products.id, productId))
+    .returning({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      status: products.status,
+    });
+
+  return {
+    ok: true,
+    product: toSellerProduct(
+      updated!,
+      await loadVariants(productId),
+      await loadImagesForProduct(productId),
+    ),
+  };
+}
+
+// Массовая публикация черновиков (POST /seller/products/publish-all, см.
+// CONCEPT.md#жизненный-цикл-сущностей, «Пакетный импорт рождает черновики»)
+// — закрывает онбординг после Excel-заливки, чтобы не публиковать десятки
+// карточек по одной. Публикуются только hidden-карточки с ≥1 вариантом:
+// hidden-карточка без вариантов (последний удалён, что на hidden
+// разрешено) нарушила бы инвариант «active ⇒ есть вариант», поэтому
+// пропускается. Возвращает число фактически опубликованных.
+export async function publishAllDrafts(sellerId: number): Promise<number> {
+  const published = await db
+    .update(products)
+    .set({ status: "active" })
+    .where(
+      and(
+        eq(products.sellerId, sellerId),
+        eq(products.status, "hidden"),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(productVariants)
+            .where(eq(productVariants.productId, products.id)),
+        ),
+      ),
+    )
+    .returning({ id: products.id });
+  return published.length;
 }
 
 // false — карточка не найдена/чужая. Варианты удаляются каскадом на
@@ -315,8 +421,10 @@ export async function updateVariant(
 }
 
 // Карточка без опций хранится как единственный вариант по умолчанию (см.
-// CONCEPT.md#каталог-и-заказы) — удаление последнего варианта карточки
-// оставило бы её без цены, поэтому запрещено.
+// CONCEPT.md#каталог-и-заказы). Удаление последнего варианта запрещено
+// только у active-карточки (инвариант «active ⇒ есть вариант с ценой», см.
+// CONCEPT.md#жизненный-цикл-сущностей) — у hidden (черновик/снята)
+// разрешено: продавец доводит черновик до ума, снимая и добавляя варианты.
 export async function deleteVariant(
   sellerId: number,
   productId: number,
@@ -342,7 +450,7 @@ export async function deleteVariant(
     .where(eq(productVariants.productId, productId));
   const existingCount = variantCountRow?.value ?? 0;
 
-  if (existingCount <= 1) {
+  if (existingCount <= 1 && owned.status === "active") {
     return { ok: false, reason: "last_variant" };
   }
 

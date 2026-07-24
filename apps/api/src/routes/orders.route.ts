@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   buyerOrderListResponseSchema,
+  checkoutPrefillResponseSchema,
   createOrderRequestSchema,
   createOrderResponseSchema,
   INSUFFICIENT_STOCK_ERROR,
@@ -11,6 +12,7 @@ import {
 import { requireSellerId } from "../auth/access.js";
 import {
   createOrder,
+  getCheckoutPrefill,
   listBuyerOrders,
   listSellerOrders,
   updateOrderStatus,
@@ -87,6 +89,27 @@ export async function ordersRoutes(fastify: FastifyInstance): Promise<void> {
 
       const list = await listBuyerOrders(sellerId, request.user.telegramId);
       return buyerOrderListResponseSchema.parse({ orders: list });
+    },
+  );
+
+  // GET /shop/:sellerId/orders/prefill — автоподстановка чекаута из
+  // последнего заказа покупателя в этом магазине (см.
+  // CONCEPT.md#жизненный-цикл-сущностей). Тот же принцип авторизации, что и
+  // у /orders/mine: любой авторизованный Telegram-пользователь читает
+  // только свой снапшот (по request.user.telegramId), чужие данные
+  // недоступны. ПДн не логируются.
+  fastify.get(
+    "/shop/:sellerId/orders/prefill",
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { sellerId: raw } = request.params as { sellerId: string };
+      const sellerId = Number(raw);
+      if (!Number.isInteger(sellerId) || sellerId <= 0) {
+        return reply.code(400).send({ error: "sellerId должен быть числом" });
+      }
+
+      const prefill = await getCheckoutPrefill(sellerId, request.user.telegramId);
+      return checkoutPrefillResponseSchema.parse({ prefill });
     },
   );
 

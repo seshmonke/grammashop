@@ -134,3 +134,26 @@ export const buyerOrderListResponseSchema = z.object({
 export type BuyerOrderListResponse = z.infer<
   typeof buyerOrderListResponseSchema
 >;
+
+// Автоподстановка чекаута из последнего заказа покупателя в этом же
+// магазине (GET /shop/:sellerId/orders/prefill, см.
+// CONCEPT.md#жизненный-цикл-сущностей, «Покупатель»). Это собственные ПДн
+// покупателя под тем же buyer_telegram_id — читается существующий снапшот
+// из orders, ничего нового не хранится, отдаётся только владельцу. Согласие
+// (consent) намеренно НЕ подставляется — оно даётся заново на каждый заказ
+// (152-ФЗ), поэтому в prefill его нет. null — заказов в этом магазине ещё
+// не было, форма стартует пустой.
+export const checkoutPrefillSchema = z.object({
+  buyerFullName: z.string(),
+  buyerPhone: z.string(),
+  buyerAddress: z.string(),
+  buyerComment: z.string().nullable(),
+});
+export type CheckoutPrefill = z.infer<typeof checkoutPrefillSchema>;
+
+export const checkoutPrefillResponseSchema = z.object({
+  prefill: checkoutPrefillSchema.nullable(),
+});
+export type CheckoutPrefillResponse = z.infer<
+  typeof checkoutPrefillResponseSchema
+>;

@@ -13,9 +13,11 @@ import {
   useDeleteVariant,
   useMoveProductImage,
   useSellerProducts,
+  useSetProductStatus,
   useUpdateProduct,
   useUpdateVariant,
 } from "../../seller/useSellerProducts";
+import { ProductStatusPill } from "../../seller/ProductStatusPill";
 
 // Форма продавцовской админки товаров: одна форма и на создание, и на
 // редактирование карточки (см. STACK.md#роутинг). Фото — отдельные запросы
@@ -150,6 +152,7 @@ export function ProductForm() {
   const addImage = useAddProductImage();
   const deleteImage = useDeleteProductImage();
   const moveImage = useMoveProductImage();
+  const setStatus = useSetProductStatus();
   const [imageError, setImageError] = useState<string | null>(null);
   const [movingImageId, setMovingImageId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -250,6 +253,26 @@ export function ProductForm() {
     }
   }
 
+  // Публикация/снятие карточки (см. CONCEPT.md#жизненный-цикл-сущностей)
+  // действует на сохранённое состояние (existing), не на несохранённые
+  // правки формы. Инвалидация списка обновит existing.status, бейдж
+  // перерисуется. Публикация недоступна без вариантов (проверка и на бэке).
+  function handleToggleStatus() {
+    if (!existing) return;
+    const next = existing.status === "active" ? "hidden" : "active";
+    setStatus.mutate(
+      { id: existing.id, status: next },
+      {
+        onError: () =>
+          setError(
+            next === "active"
+              ? "Не удалось опубликовать карточку — попробуйте ещё раз"
+              : "Не удалось снять карточку с витрины — попробуйте ещё раз",
+          ),
+      },
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -310,6 +333,30 @@ export function ProductForm() {
         <h1 className="mt-1 y2k-heading font-display text-lg text-tg-text">
           {isEdit ? "Изменить товар" : "Новый товар"}
         </h1>
+        {existing && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <ProductStatusPill status={existing.status} />
+            {existing.status === "active" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={setStatus.isPending}
+                onClick={handleToggleStatus}
+              >
+                Снять с витрины
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={setStatus.isPending || existing.variants.length === 0}
+                onClick={handleToggleStatus}
+              >
+                Опубликовать
+              </Button>
+            )}
+          </div>
+        )}
       </header>
 
       <main className="p-4">
