@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { SellerStatus, SubscriptionStatus, SubscriptionTier } from "@grammashop/shared";
 import { Button } from "@/components/ui/button";
 import { ScreenState } from "../../shop/ScreenState";
 import { AdminToolbar } from "../../nav/AdminToolbar";
 import { shopLink } from "../../lib/platform";
+import { useSession } from "../../auth/session-context";
 import {
   useGrantGrace,
   usePlatformSellers,
@@ -43,6 +45,7 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
 const DEFAULT_GRACE_MONTHS = 1;
 
 export function PlatformHome() {
+  const session = useSession();
   const { data: sellers, isLoading, isError } = usePlatformSellers();
   const updateStatus = useUpdateSellerStatus();
   const grantGrace = useGrantGrace();
@@ -108,6 +111,15 @@ export function PlatformHome() {
       </header>
 
       <main className="flex-1 space-y-3 p-4">
+        {session.sellerId == null && (
+          <Link
+            to="/register"
+            className="flex items-center justify-between rounded-2xl bg-tg-surface p-4 text-sm font-medium text-tg-text"
+          >
+            У вас нет своего магазина
+            <span className="text-tg-link">Запустить →</span>
+          </Link>
+        )}
         {isLoading && <ScreenState variant="inline" title="Загрузка…" />}
         {isError && (
           <ScreenState variant="inline" title="Не удалось загрузить продавцов." />
