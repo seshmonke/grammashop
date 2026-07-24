@@ -12,6 +12,44 @@ import { db } from "../db/client.js";
 import { orderItems, orders, products, productVariants, sellers } from "../db/schema.js";
 import { enqueueOrderNotification } from "../notifications/order-notification.js";
 
+// Тип транзакции drizzle — выведен из сигнатуры db.transaction, без импорта
+// внутренних типов пакета. Нужен общему хелперу restoreOrderStock, который
+// работает только внутри уже открытой транзакции.
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Возврат остатка при отмене заказа — под блокировкой строк вариантов
+// (`for("update")"`), зеркально списанию в createOrder, чтобы не разъехаться
+// с параллельным заказом на тот же вариант. Общий для продавцовской смены
+// статуса (updateOrderStatus) и покупательской отмены (cancelOwnOrder) — не
+// дублировать транзакционную логику возврата. Вызывать только внутри
+// транзакции, где строка заказа уже под локом.
+async function restoreOrderStock(tx: Tx, orderId: number): Promise<void> {
+  const items = await tx
+    .select({ variantId: orderItems.variantId, quantity: orderItems.quantity })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+  const variantIds = items
+    .map((i) => i.variantId)
+    .filter((id): id is number => id !== null);
+  if (variantIds.length === 0) return;
+
+  const variantRows = await tx
+    .select({ id: productVariants.id, stock: productVariants.stock })
+    .from(productVariants)
+    .where(inArray(productVariants.id, variantIds))
+    .for("update");
+  const stockById = new Map(variantRows.map((v) => [v.id, v.stock]));
+  for (const item of items) {
+    if (item.variantId === null) continue;
+    const stock = stockById.get(item.variantId);
+    if (stock === undefined || stock === null) continue;
+    await tx
+      .update(productVariants)
+      .set({ stock: stock + item.quantity })
+      .where(eq(productVariants.id, item.variantId));
+  }
+}
+
 // Заказ с таким idempotency-ключом уже существует — вернуть его в форме
 // CreateOrderResponse. Используется и до транзакции (обычный повтор после
 // сетевой ошибки), и после перехвата unique violation (гонка двух
@@ -349,32 +387,8 @@ export async function updateOrderStatus(
 
   await db.transaction(async (tx) => {
     if (newStatus === "canceled") {
-      const items = await tx
-        .select({ variantId: orderItems.variantId, quantity: orderItems.quantity })
-        .from(orderItems)
-        .where(eq(orderItems.orderId, orderId));
-      const variantIds = items
-        .map((i) => i.variantId)
-        .filter((id): id is number => id !== null);
-      if (variantIds.length > 0) {
-        const variantRows = await tx
-          .select({ id: productVariants.id, stock: productVariants.stock })
-          .from(productVariants)
-          .where(inArray(productVariants.id, variantIds))
-          .for("update");
-        const stockById = new Map(variantRows.map((v) => [v.id, v.stock]));
-        for (const item of items) {
-          if (item.variantId === null) continue;
-          const stock = stockById.get(item.variantId);
-          if (stock === undefined || stock === null) continue;
-          await tx
-            .update(productVariants)
-            .set({ stock: stock + item.quantity })
-            .where(eq(productVariants.id, item.variantId));
-        }
-      }
+      await restoreOrderStock(tx, orderId);
     }
-
     await tx.update(orders).set({ status: newStatus }).where(eq(orders.id, orderId));
   });
 
@@ -390,6 +404,68 @@ export async function updateOrderStatus(
       buyerComment: orders.buyerComment,
     })
     .from(orders)
+    .where(eq(orders.id, orderId));
+
+  return { ok: true, order: { ...updated!, items: await loadOrderItems(orderId) } };
+}
+
+// Отмена заказа покупателем (POST /shop/:sellerId/orders/:id/cancel, см.
+// CONCEPT.md#каталог-и-заказы «покупатель отменяет сам, пока заказ new» и
+// CONCEPT.md#жизненный-цикл-сущностей, подраздел «Покупатель»). Зеркало
+// escape-hatch'а продавца, но авторизация по владельцу заказа
+// (buyerTelegramId), а не по продавцу; чужой/несуществующий заказ →
+// not_found (в роуте 404 — не раскрываем существование).
+//
+// Вся отмена в одной транзакции с локом строки заказа (`for("update")"):
+// перепроверка status === 'new' под локом закрывает гонку с продавцовским
+// new→paid — нельзя отменить заказ, который продавец в ту же секунду
+// пометил оплаченным. Возврат остатка — общий restoreOrderStock, тот же,
+// что у updateOrderStatus.
+export async function cancelOwnOrder(
+  sellerId: number,
+  buyerTelegramId: number,
+  orderId: number,
+): Promise<
+  | { ok: true; order: BuyerOrder }
+  | { ok: false; reason: "not_found" | "not_cancelable" }
+> {
+  const outcome = await db.transaction(
+    async (
+      tx,
+    ): Promise<{ ok: true } | { ok: false; reason: "not_found" | "not_cancelable" }> => {
+      const [order] = await tx
+        .select({ id: orders.id, status: orders.status })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.id, orderId),
+            eq(orders.sellerId, sellerId),
+            eq(orders.buyerTelegramId, buyerTelegramId),
+          ),
+        )
+        .for("update");
+      if (!order) return { ok: false, reason: "not_found" };
+      if (order.status !== "new") return { ok: false, reason: "not_cancelable" };
+
+      await restoreOrderStock(tx, orderId);
+      await tx.update(orders).set({ status: "canceled" }).where(eq(orders.id, orderId));
+      return { ok: true };
+    },
+  );
+  if (!outcome.ok) return outcome;
+
+  const [updated] = await db
+    .select({
+      id: orders.id,
+      sellerId: orders.sellerId,
+      shopName: sellers.shopName,
+      telegramUsername: sellers.telegramUsername,
+      status: orders.status,
+      totalKopecks: orders.totalKopecks,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .innerJoin(sellers, eq(orders.sellerId, sellers.id))
     .where(eq(orders.id, orderId));
 
   return { ok: true, order: { ...updated!, items: await loadOrderItems(orderId) } };

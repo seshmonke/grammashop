@@ -235,6 +235,13 @@ export const orders = pgTable(
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
+    // Дедуп напоминания продавцу о заказе, зависшем в `new` дольше 48 ч (см.
+    // Спринт 43, CONCEPT.md#жизненный-цикл-сущностей, подраздел «Заказ»):
+    // проставляется свипом order-reminder после отправки, чтобы не слать
+    // повторно. NULL — напоминание ещё не слали. Бэкфилл now() текущим
+    // `new`-заказам сделан в миграции — фича работает только на будущие
+    // зависания, без залпа по старым заказам на первом прогоне.
+    newReminderSentAt: timestamp("new_reminder_sent_at", { withTimezone: true }),
   },
   (table) => [
     uniqueIndex("orders_idempotency_key_unique").on(table.idempotencyKey),

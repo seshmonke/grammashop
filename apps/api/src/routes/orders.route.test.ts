@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq, inArray } from "drizzle-orm";
 import {
   buyerOrderListResponseSchema,
+  buyerOrderSchema,
   checkoutPrefillResponseSchema,
   createOrderResponseSchema,
   sellerOrderListResponseSchema,
@@ -846,6 +847,164 @@ describe("PATCH /seller/orders/:id/status", () => {
     const res = await methodReq(app, "PATCH", "/seller/orders/999999/status", token, {
       status: "paid",
     });
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+// POST /shop/:sellerId/orders/:id/cancel — отмена заказа покупателем, пока он
+// new (Спринт 43, см. CONCEPT.md#каталог-и-заказы). Авторизация по владельцу
+// заказа (buyerTelegramId), не по продавцу; чужой заказ → 404; отмена не из
+// new → 409 (перепроверка статуса под локом строки — гонка с продавцовским
+// new→paid не отменяет оплаченный).
+
+const CANCEL_BUYER_TG = 700800001;
+const CANCEL_OTHER_BUYER_TG = 700800002;
+const CANCEL_SELLER_TG = 700800003;
+const ALL_CANCEL_SELLER_TG = [CANCEL_SELLER_TG];
+
+async function seedCancelOrder(
+  sellerId: number,
+  buyerTelegramId: number,
+  variantId: number,
+  opts: { quantity?: number; status?: "new" | "paid" | "fulfilled" | "canceled" } = {},
+): Promise<number> {
+  const [order] = await db
+    .insert(orders)
+    .values({
+      sellerId,
+      buyerTelegramId,
+      status: opts.status ?? "new",
+      buyerFullName: "Покупатель",
+      buyerPhone: "+79990001122",
+      buyerAddress: "Москва, ул. Тестовая, 1",
+      buyerComment: null,
+      consentAt: new Date(),
+      totalKopecks: 300000 * (opts.quantity ?? 1),
+    })
+    .returning({ id: orders.id });
+  await db.insert(orderItems).values({
+    orderId: order!.id,
+    variantId,
+    productNameSnapshot: "Худи",
+    variantNameSnapshot: "M",
+    priceKopecks: 300000,
+    quantity: opts.quantity ?? 1,
+  });
+  return order!.id;
+}
+
+describe("POST /shop/:sellerId/orders/:id/cancel", () => {
+  beforeEach(async () => {
+    const stale = await db
+      .select({ id: sellers.id })
+      .from(sellers)
+      .where(inArray(sellers.telegramId, ALL_CANCEL_SELLER_TG));
+    if (stale.length) {
+      await db.delete(orders).where(
+        inArray(
+          orders.sellerId,
+          stale.map((s) => s.id),
+        ),
+      );
+    }
+    await db.delete(sellers).where(inArray(sellers.telegramId, ALL_CANCEL_SELLER_TG));
+  });
+
+  it("без JWT → 401", async () => {
+    const app = buildApp();
+    const res = await methodReq(app, "POST", "/shop/1/orders/1/cancel");
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("отмена из new → 200, статус canceled, остаток вернулся", async () => {
+    const app = buildApp();
+    const sellerId = await seedSellerAdmin(CANCEL_SELLER_TG, "cancel_shop");
+    const { variantId } = await seedProductWithVariant(sellerId, { stock: 5 });
+    // Имитируем списание при заказе: остаток уже уменьшен на 2.
+    await db.update(productVariants).set({ stock: 3 }).where(eq(productVariants.id, variantId));
+    const orderId = await seedCancelOrder(sellerId, CANCEL_BUYER_TG, variantId, { quantity: 2 });
+    const token = await mineTokenFor(app, CANCEL_BUYER_TG);
+
+    const res = await methodReq(app, "POST", `/shop/${sellerId}/orders/${orderId}/cancel`, token);
+
+    expect(res.statusCode).toBe(200);
+    const body = buyerOrderSchema.parse(res.json());
+    expect(body.status).toBe("canceled");
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("canceled");
+    const [variant] = await db
+      .select({ stock: productVariants.stock })
+      .from(productVariants)
+      .where(eq(productVariants.id, variantId));
+    expect(variant!.stock).toBe(5);
+    await app.close();
+  });
+
+  it("отмена не из new (paid) → 409, статус и остаток не меняются", async () => {
+    const app = buildApp();
+    const sellerId = await seedSellerAdmin(CANCEL_SELLER_TG, "cancel_shop");
+    const { variantId } = await seedProductWithVariant(sellerId, { stock: 5 });
+    await db.update(productVariants).set({ stock: 3 }).where(eq(productVariants.id, variantId));
+    const orderId = await seedCancelOrder(sellerId, CANCEL_BUYER_TG, variantId, {
+      quantity: 2,
+      status: "paid",
+    });
+    const token = await mineTokenFor(app, CANCEL_BUYER_TG);
+
+    const res = await methodReq(app, "POST", `/shop/${sellerId}/orders/${orderId}/cancel`, token);
+
+    expect(res.statusCode).toBe(409);
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("paid");
+    const [variant] = await db
+      .select({ stock: productVariants.stock })
+      .from(productVariants)
+      .where(eq(productVariants.id, variantId));
+    expect(variant!.stock).toBe(3);
+    await app.close();
+  });
+
+  it("чужой заказ (другой покупатель) → 404, не отменяется", async () => {
+    const app = buildApp();
+    const sellerId = await seedSellerAdmin(CANCEL_SELLER_TG, "cancel_shop");
+    const { variantId } = await seedProductWithVariant(sellerId, { stock: 5 });
+    const orderId = await seedCancelOrder(sellerId, CANCEL_OTHER_BUYER_TG, variantId);
+    const token = await mineTokenFor(app, CANCEL_BUYER_TG);
+
+    const res = await methodReq(app, "POST", `/shop/${sellerId}/orders/${orderId}/cancel`, token);
+
+    expect(res.statusCode).toBe(404);
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("new");
+    await app.close();
+  });
+
+  it("заказ в другом магазине (mismatched sellerId) → 404", async () => {
+    const app = buildApp();
+    const sellerId = await seedSellerAdmin(CANCEL_SELLER_TG, "cancel_shop");
+    const { variantId } = await seedProductWithVariant(sellerId, { stock: 5 });
+    const orderId = await seedCancelOrder(sellerId, CANCEL_BUYER_TG, variantId);
+    const token = await mineTokenFor(app, CANCEL_BUYER_TG);
+
+    // Тот же заказ, но запрошен под чужим sellerId — не должен найтись.
+    const res = await methodReq(app, "POST", `/shop/999999/orders/${orderId}/cancel`, token);
+
+    expect(res.statusCode).toBe(404);
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
+    expect(order!.status).toBe("new");
+    await app.close();
+  });
+
+  it("несуществующий заказ → 404", async () => {
+    const app = buildApp();
+    const sellerId = await seedSellerAdmin(CANCEL_SELLER_TG, "cancel_shop");
+    const token = await mineTokenFor(app, CANCEL_BUYER_TG);
+
+    const res = await methodReq(app, "POST", `/shop/${sellerId}/orders/999999/cancel`, token);
 
     expect(res.statusCode).toBe(404);
     await app.close();

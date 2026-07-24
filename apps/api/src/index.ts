@@ -4,6 +4,7 @@ import { initSentry } from "./sentry.js";
 import { buildApp } from "./app.js";
 import { boss } from "./queue/client.js";
 import { registerOrderNotificationWorker } from "./notifications/order-notification.js";
+import { registerOrderReminderWorker } from "./notifications/order-reminder-worker.js";
 import { registerRecurringBillingWorker } from "./billing/recurring-worker.js";
 import { registerFinalizeDeletionWorker } from "./sellers/finalize-deletion-worker.js";
 import { getBot } from "./bot/client.js";
@@ -18,6 +19,7 @@ const app = buildApp();
 // STACK.md#фоновые-задачи): pg-boss не требует отдельного сервиса.
 await boss.start();
 await registerOrderNotificationWorker();
+await registerOrderReminderWorker();
 await registerRecurringBillingWorker();
 await registerFinalizeDeletionWorker();
 

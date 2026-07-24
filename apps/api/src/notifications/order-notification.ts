@@ -10,7 +10,9 @@ import { boss, ORDER_NOTIFICATION_QUEUE } from "../queue/client.js";
 
 // Тот же t.me-паттерн, что у MINI_APP_URL в bot/start-handler.ts, но с
 // диплинком на конкретный заказ вместо голого запуска Mini App.
-const MINI_APP_URL = "https://t.me/grammashopbot/shop";
+// Экспортируется — переиспользуется свипом напоминаний о зависшем заказе
+// (notifications/order-reminder-worker.ts, Спринт 43).
+export const MINI_APP_URL = "https://t.me/grammashopbot/shop";
 
 // Уведомление продавца о новом заказе через платформенного бота (см.
 // CONCEPT.md#каталог-и-заказы, STACK.md#telegram-бот) — фоновая job на
@@ -30,7 +32,9 @@ type OrderNotificationData = {
   items: Array<{ productName: string; variantName: string; quantity: number }>;
 };
 
-function formatRubles(kopecks: number): string {
+// Экспортируется — переиспользуется свипом напоминаний о зависшем заказе
+// (notifications/order-reminder-worker.ts, Спринт 43).
+export function formatRubles(kopecks: number): string {
   return `${(kopecks / 100).toFixed(2)} ₽`;
 }
 

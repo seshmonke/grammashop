@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   buyerOrderListResponseSchema,
+  buyerOrderSchema,
   checkoutPrefillResponseSchema,
   createOrderRequestSchema,
   createOrderResponseSchema,
@@ -11,6 +12,7 @@ import {
 } from "@grammashop/shared";
 import { requireSellerId } from "../auth/access.js";
 import {
+  cancelOwnOrder,
   createOrder,
   getCheckoutPrefill,
   listBuyerOrders,
@@ -110,6 +112,40 @@ export async function ordersRoutes(fastify: FastifyInstance): Promise<void> {
 
       const prefill = await getCheckoutPrefill(sellerId, request.user.telegramId);
       return checkoutPrefillResponseSchema.parse({ prefill });
+    },
+  );
+
+  // POST /shop/:sellerId/orders/:id/cancel — отмена заказа покупателем, пока
+  // он new (см. CONCEPT.md#каталог-и-заказы). Per-shop, как /orders/mine:
+  // авторизация по request.user.telegramId (владелец заказа, не продавец),
+  // requireSellerId здесь не к месту. Чужой/несуществующий заказ → 404 (не
+  // раскрываем существование); отмена не из new → 409.
+  fastify.post(
+    "/shop/:sellerId/orders/:id/cancel",
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { sellerId: rawSeller, id: rawId } = request.params as {
+        sellerId: string;
+        id: string;
+      };
+      const sellerId = Number(rawSeller);
+      if (!Number.isInteger(sellerId) || sellerId <= 0) {
+        return reply.code(400).send({ error: "sellerId должен быть числом" });
+      }
+      const orderId = parseIdParam(rawId);
+      if (orderId === null) {
+        return reply.code(400).send({ error: "id должен быть числом" });
+      }
+
+      const result = await cancelOwnOrder(sellerId, request.user.telegramId, orderId);
+      if (!result.ok) {
+        if (result.reason === "not_found") {
+          return reply.code(404).send({ error: "заказ не найден" });
+        }
+        return reply.code(409).send({ error: "заказ уже нельзя отменить" });
+      }
+
+      return buyerOrderSchema.parse(result.order);
     },
   );
 

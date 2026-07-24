@@ -4,6 +4,7 @@ import { resolveSellerId } from "../../shop/seller-id";
 import { ScreenState } from "../../shop/ScreenState";
 import { TabBar } from "../../nav/TabBar";
 import { useBuyerOrders } from "../../checkout/useBuyerOrders";
+import { useCancelOrder } from "../../checkout/useCancelOrder";
 
 // «Мои заказы» покупателя в текущем магазине (см. CONCEPT.md#каталог-и-заказы).
 // Пересматривает Спринт 34 — список был сквозным по всем магазинам платформы,
@@ -30,6 +31,12 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
 export function OrdersPage() {
   const sellerId = resolveSellerId();
   const { data: orders, isLoading, isError } = useBuyerOrders(sellerId);
+  const cancelOrder = useCancelOrder(sellerId);
+
+  const handleCancel = (orderId: number) => {
+    if (!confirm("Отменить заказ? Это действие необратимо.")) return;
+    cancelOrder.mutate(orderId);
+  };
 
   return (
     <div className="y2k-scanlines flex min-h-dvh flex-col bg-tg-bg">
@@ -93,6 +100,26 @@ export function OrdersPage() {
             >
               Написать продавцу
             </a>
+
+            {order.status === "new" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleCancel(order.id)}
+                  disabled={cancelOrder.isPending}
+                  className="mt-2 block w-full rounded-xl border border-tg-separator py-2 text-center text-sm font-medium text-tg-destructive disabled:opacity-50"
+                >
+                  {cancelOrder.isPending && cancelOrder.variables === order.id
+                    ? "Отмена…"
+                    : "Отменить заказ"}
+                </button>
+                {cancelOrder.isError && cancelOrder.variables === order.id && (
+                  <p className="mt-2 text-center text-xs text-tg-destructive">
+                    Не удалось отменить. Возможно, продавец уже взял заказ в работу.
+                  </p>
+                )}
+              </>
+            )}
           </div>
         ))}
       </main>

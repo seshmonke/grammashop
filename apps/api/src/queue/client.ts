@@ -14,6 +14,10 @@ export const SUBSCRIPTION_BILLING_QUEUE = "subscription-billing";
 // восстановления (см. sellers/finalize-deletion-worker.ts, Спринт 37).
 export const SELLER_DELETION_QUEUE = "seller-deletion-finalize";
 
+// Ежедневный свип напоминаний продавцу о заказе, зависшем в `new` дольше
+// 48 ч (см. notifications/order-reminder-worker.ts, Спринт 43).
+export const ORDER_REMINDER_QUEUE = "order-reminder";
+
 export const boss = new PgBoss({
   connectionString: process.env.DATABASE_URL,
 });
